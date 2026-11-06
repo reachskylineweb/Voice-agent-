@@ -131,8 +131,8 @@
             </svg>
             <span id="topbarCallerIdValue">Dedicated TATA: +91 98765 11111</span>
           </div>
-          <button type="button" class="btn-secondary btn-sm" id="btnResetDemoData" title="Restore default sample records">
-            Reset Sample Data
+          <button type="button" class="btn-secondary btn-sm" id="btnClearAllData" title="Clear all call report records">
+            Clear All Records
           </button>
         </div>
       </header>
@@ -284,8 +284,7 @@
                   type="text"
                   id="singleCustomerName"
                   class="form-input"
-                  placeholder="e.g., Karthik Subramanian"
-                  value="Karthik Subramanian"
+                  placeholder="Enter customer full name"
                   required
                 />
               </div>
@@ -297,8 +296,7 @@
                     type="tel"
                     id="singlePhoneNumber"
                     class="form-input"
-                    placeholder="e.g., +91 98401 23456"
-                    value="+91 98401 23456"
+                    placeholder="Enter phone number (e.g., +91 98765 43210)"
                     required
                   />
                 </div>
@@ -309,8 +307,7 @@
                     type="text"
                     id="singleEnquiryItem"
                     class="form-input"
-                    placeholder="e.g., TATA Nexon EV / Panchakarma Detox"
-                    value="TATA Nexon EV Empowered+"
+                    placeholder="Enter vehicle model or service enquired"
                     required
                   />
                 </div>
@@ -376,8 +373,7 @@
                 </div>
               </div>
               <div class="bulk-sample-actions">
-                <button type="button" class="btn-outline-xs" id="btnLoadSampleCsv">Load Sample Leads</button>
-                <button type="button" class="btn-outline-xs" id="btnDownloadTemplateCsv">CSV Template</button>
+                <button type="button" class="btn-outline-xs" id="btnDownloadTemplateCsv">Download CSV Template</button>
               </div>
             </div>
 
@@ -402,7 +398,7 @@
                 <button type="button" class="btn-text-danger" id="btnClearBulkQueue">Clear Queue</button>
               </div>
               <div class="bulk-preview-list" id="bulkPreviewList">
-                <div class="empty-preview-msg">No CSV loaded yet. Drag a CSV file above or click "Load Sample Leads" to test immediately.</div>
+                <div class="empty-preview-msg">No CSV file uploaded. Drag &amp; drop a CSV file above to load leads.</div>
               </div>
             </div>
 
@@ -557,13 +553,12 @@
               type="text"
               id="intentTestInput"
               class="form-input"
-              value="ஆமா சார் கால் பண்ணி பேசினாங்க, எல்லாமே தெளிவா புரிஞ்சது ரொம்ப திருப்தி"
               placeholder="Type a Tamil, Tanglish, or English customer response to test..."
             />
             <button type="button" class="btn-secondary" id="btnRunIntentTest">Test Intent Detection</button>
             <div class="intent-test-results" id="intentTestResults">
-              <span>Q1: <strong class="badge-yes">YES</strong></span>
-              <span>Q2: <strong class="badge-yes">YES</strong></span>
+              <span>Q1: <strong>—</strong></span>
+              <span>Q2: <strong>—</strong></span>
             </div>
           </div>
         </div>

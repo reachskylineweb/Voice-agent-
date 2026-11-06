@@ -1,20 +1,18 @@
 /**
  * Reach AI Voice — Module 2 Frontend Application (frontend/app.js)
  * Multi-Workflow Outbound Verification Dashboard
- * Supports Backend REST APIs (/api/workflows, /api/calls/single, /api/calls/bulk, /api/reports)
- * with automatic local state / mock data fallback so the entire UI works immediately in Chrome.
  */
 
 (function () {
   'use strict';
 
   const STORAGE_KEYS = {
-    WORKFLOWS: 'reach_ai_voice_workflows_v2',
-    REPORTS: 'reach_ai_voice_reports_v2',
-    ACTIVE_WORKFLOW_ID: 'reach_ai_voice_active_workflow_id_v2',
+    WORKFLOWS: 'reach_ai_voice_workflows_v3',
+    REPORTS: 'reach_ai_voice_reports_v3',
+    ACTIVE_WORKFLOW_ID: 'reach_ai_voice_active_workflow_id_v3',
   };
 
-  // ==================== DEFAULT PRE-LOADED WORKFLOWS ====================
+  // ==================== PRE-CONFIGURED WORKFLOWS (NO DUMMY CALL DATA) ====================
   const DEFAULT_WORKFLOWS = [
     {
       id: 'tata-leads',
@@ -26,9 +24,6 @@
       callerId: 'Dedicated TATA: +91 98765 11111',
       voiceModel: 'Tamil Female (Pallavi HD)',
       badgeColor: 'blue',
-      defaultSampleCustomer: 'Karthik Subramanian',
-      defaultSamplePhone: '+91 98401 23456',
-      defaultSampleItem: 'TATA Nexon EV Empowered+',
       itemLabel: 'Vehicle Model Enquired',
       step1Script:
         'வணக்கம் {customer_name}, நான் TATA Motors வாடிக்கையாளர் சேவை மையத்திலிருந்து பேசுகிறேன். நீங்கள் சமீபத்தில் {enquiry_item} வாகனம் குறித்து விசாரித்தீர்கள். Hello {customer_name}, we are calling from TATA Motors regarding your recent enquiry for {enquiry_item}.',
@@ -55,9 +50,6 @@
       callerId: 'Dedicated Healing Earth: +91 98765 22222',
       voiceModel: 'Tamil Female (Pallavi HD)',
       badgeColor: 'emerald',
-      defaultSampleCustomer: 'Meenakshi Sundaram',
-      defaultSamplePhone: '+91 98412 77889',
-      defaultSampleItem: 'Panchakarma Detox Therapy',
       itemLabel: 'Treatment / Service Enquired',
       step1Script:
         'வணக்கம் {customer_name}, நான் Healing Earth ஆயுர்வேத மருத்துவமனையிலிருந்து பேசுகிறேன். நீங்கள் {enquiry_item} சிகிச்சை குறித்து விசாரித்தீர்கள். Hello {customer_name}, greetings from Healing Earth Ayurveda regarding your enquiry for {enquiry_item}.',
@@ -76,129 +68,8 @@
     },
   ];
 
-  // ==================== DEFAULT SAMPLE VERIFICATION REPORTS ====================
-  const DEFAULT_REPORTS = [
-    {
-      id: 'REP-1001',
-      timestamp: '06 Nov 2026, 11:42 AM',
-      workflowId: 'tata-leads',
-      workflowName: 'TATA Leads Enquiry Verification',
-      workflowBadgeColor: 'blue',
-      callerId: 'Dedicated TATA: +91 98765 11111',
-      customerName: 'Arun Prakash',
-      customerPhone: '+91 98402 44110',
-      enquiryItem: 'Nexon EV',
-      q1Contacted: 'YES',
-      q2Satisfied: 'YES',
-      transcript:
-        'ஆமா சார் கால் பண்ணி பேசினாங்க, Nexon EV range அப்புறம் charging details எல்லாமே தெளிவா புரிஞ்சது, ரொம்ப திருப்தி.',
-    },
-    {
-      id: 'REP-1002',
-      timestamp: '06 Nov 2026, 11:30 AM',
-      workflowId: 'healing-earth',
-      workflowName: 'Healing Earth Service Verification',
-      workflowBadgeColor: 'emerald',
-      callerId: 'Dedicated Healing Earth: +91 98765 22222',
-      customerName: 'Lakshmi Narayanan',
-      customerPhone: '+91 94441 89201',
-      enquiryItem: 'Panchakarma Detox',
-      q1Contacted: 'YES',
-      q2Satisfied: 'YES',
-      transcript:
-        'Aama doctor counselor call pannanga. 14-day Panchakarma Detox package pathi nalla explain pannanga, full satisfied.',
-    },
-    {
-      id: 'REP-1003',
-      timestamp: '06 Nov 2026, 11:15 AM',
-      workflowId: 'tata-leads',
-      workflowName: 'TATA Leads Enquiry Verification',
-      workflowBadgeColor: 'blue',
-      callerId: 'Dedicated TATA: +91 98765 11111',
-      customerName: 'Suresh Kumar M',
-      customerPhone: '+91 97909 55123',
-      enquiryItem: 'Punch',
-      q1Contacted: 'YES',
-      q2Satisfied: 'NO',
-      transcript:
-        'ஆமா கால் பண்ணாங்க, ஆனா on-road price அப்புறம் exchange bonus பத்தி சரியா சொல்லல, இன்னும் டவுட் இருக்கு.',
-    },
-    {
-      id: 'REP-1004',
-      timestamp: '06 Nov 2026, 10:55 AM',
-      workflowId: 'healing-earth',
-      workflowName: 'Healing Earth Service Verification',
-      workflowBadgeColor: 'emerald',
-      callerId: 'Dedicated Healing Earth: +91 98765 22222',
-      customerName: 'Revathi Balasubramanian',
-      customerPhone: '+91 98840 31098',
-      enquiryItem: 'Back Pain Therapy',
-      q1Contacted: 'NO',
-      q2Satisfied: 'NO',
-      transcript:
-        'இல்ல மேடம், எனக்கு இன்னும் யாரும் கால் பண்ணல. Back Pain Therapy க்கு உடனே டாக்டர் அப்பாயின்ட்மென்ட் வேணும்.',
-    },
-    {
-      id: 'REP-1005',
-      timestamp: '06 Nov 2026, 10:40 AM',
-      workflowId: 'tata-leads',
-      workflowName: 'TATA Leads Enquiry Verification',
-      workflowBadgeColor: 'blue',
-      callerId: 'Dedicated TATA: +91 98765 11111',
-      customerName: 'Vigneshwaran S',
-      customerPhone: '+91 90031 67890',
-      enquiryItem: 'Harrier',
-      q1Contacted: 'YES',
-      q2Satisfied: 'YES',
-      transcript:
-        'Yes, showroom executive spoke to me yesterday and arranged the Harrier Dark Edition test drive. Clearly understood and satisfied!',
-    },
-    {
-      id: 'REP-1006',
-      timestamp: '06 Nov 2026, 10:18 AM',
-      workflowId: 'healing-earth',
-      workflowName: 'Healing Earth Service Verification',
-      workflowBadgeColor: 'emerald',
-      callerId: 'Dedicated Healing Earth: +91 98765 22222',
-      customerName: 'Senthil Nathan',
-      customerPhone: '+91 99405 11223',
-      enquiryItem: 'Shirodhara Stress Relief',
-      q1Contacted: 'YES',
-      q2Satisfied: 'YES',
-      transcript:
-        'ஆமாம் பேசினாங்க, சிகிச்சை நேரம் மற்றும் கட்டணம் எல்லாம் தெளிவாக புரிஞ்சது, இந்த வாரம் வரேன்.',
-    },
-    {
-      id: 'REP-1007',
-      timestamp: '06 Nov 2026, 09:50 AM',
-      workflowId: 'tata-leads',
-      workflowName: 'TATA Leads Enquiry Verification',
-      workflowBadgeColor: 'blue',
-      callerId: 'Shared Pool: +91 98765 00000',
-      customerName: 'Divya Bharathi',
-      customerPhone: '+91 96770 33445',
-      enquiryItem: 'Curvv EV',
-      q1Contacted: 'NO',
-      q2Satisfied: 'NO',
-      transcript:
-        'Illa, showroom la irunthu yarume call pannala. Please ask the sales team to call me today evening.',
-    },
-    {
-      id: 'REP-1008',
-      timestamp: '06 Nov 2026, 09:25 AM',
-      workflowId: 'healing-earth',
-      workflowName: 'Healing Earth Service Verification',
-      workflowBadgeColor: 'emerald',
-      callerId: 'Dedicated Healing Earth: +91 98765 22222',
-      customerName: 'Anitha Rajendran',
-      customerPhone: '+91 95001 88776',
-      enquiryItem: 'Knee Joint Rejuvenation',
-      q1Contacted: 'YES',
-      q2Satisfied: 'NO',
-      transcript:
-        'கால் பண்ணாங்க ஆனா insurance coverage இருக்கான்னு சரியா சொல்லல, திருப்தி இல்ல.',
-    },
-  ];
+  // Empty reports array — no dummy call records
+  const DEFAULT_REPORTS = [];
 
   // ==================== APPLICATION STATE ====================
   const state = {
@@ -265,12 +136,20 @@
       localStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(state.reports));
       localStorage.setItem(STORAGE_KEYS.ACTIVE_WORKFLOW_ID, state.activeWorkflowId);
     } catch (_err) {
-      // Ignore storage quota errors in private browsing
+      // Ignore storage quota errors
     }
   }
 
   function loadLocalState() {
     try {
+      // Clean up legacy v2 keys that contained dummy data
+      localStorage.removeItem('askeva_outbound_workflows_v2');
+      localStorage.removeItem('askeva_outbound_reports_v2');
+      localStorage.removeItem('askeva_active_workflow_id_v2');
+      localStorage.removeItem('reach_ai_voice_workflows_v2');
+      localStorage.removeItem('reach_ai_voice_reports_v2');
+      localStorage.removeItem('reach_ai_voice_active_workflow_id_v2');
+
       const savedWf = localStorage.getItem(STORAGE_KEYS.WORKFLOWS);
       const savedRep = localStorage.getItem(STORAGE_KEYS.REPORTS);
       const savedActiveId = localStorage.getItem(STORAGE_KEYS.ACTIVE_WORKFLOW_ID);
@@ -282,7 +161,7 @@
       }
     } catch (_err) {
       state.workflows = JSON.parse(JSON.stringify(DEFAULT_WORKFLOWS));
-      state.reports = JSON.parse(JSON.stringify(DEFAULT_REPORTS));
+      state.reports = [];
     }
   }
 
@@ -314,7 +193,7 @@
       text.textContent = 'Backend REST API Connected';
     } else {
       dot.style.backgroundColor = '#38bdf8';
-      text.textContent = 'Local State / Instant Demo Ready';
+      text.textContent = 'Frontend UI Active';
     }
   }
 
@@ -329,7 +208,7 @@
     if (wfRes.ok && Array.isArray(wfRes.data?.workflows) && wfRes.data.workflows.length > 0) {
       state.workflows = wfRes.data.workflows;
     }
-    if (repRes.ok && Array.isArray(repRes.data?.reports) && repRes.data.reports.length > 0) {
+    if (repRes.ok && Array.isArray(repRes.data?.reports)) {
       state.reports = repRes.data.reports;
     }
 
@@ -460,14 +339,7 @@
       voiceSelect.value = wf.voiceModel;
     }
 
-    const nameInput = document.getElementById('singleCustomerName');
-    const phoneInput = document.getElementById('singlePhoneNumber');
-    const itemInput = document.getElementById('singleEnquiryItem');
     const itemLabel = document.getElementById('lblSingleEnquiryItem');
-
-    if (nameInput && wf.defaultSampleCustomer) nameInput.value = wf.defaultSampleCustomer;
-    if (phoneInput && wf.defaultSamplePhone) phoneInput.value = wf.defaultSamplePhone;
-    if (itemInput && wf.defaultSampleItem) itemInput.value = wf.defaultSampleItem;
     if (itemLabel && wf.itemLabel) {
       itemLabel.innerHTML = `${escapeHtml(wf.itemLabel)} <span class="req">*</span>`;
     }
@@ -597,17 +469,16 @@
   }
 
   function updateStep1LivePreview() {
-    const wf = getActiveWorkflow();
     const step1 = document.getElementById('step1ScriptInput');
     const preview = document.getElementById('step1LivePreview');
-    if (!step1 || !preview || !wf) return;
+    if (!step1 || !preview) return;
 
-    const sampleName = wf.defaultSampleCustomer || 'Karthik Subramanian';
-    const sampleItem = wf.defaultSampleItem || 'TATA Nexon EV';
+    const nameVal = document.getElementById('singleCustomerName')?.value.trim() || '{customer_name}';
+    const itemVal = document.getElementById('singleEnquiryItem')?.value.trim() || '{enquiry_item}';
 
     const rendered = step1.value
-      .replace(/\{customer_name\}/g, sampleName)
-      .replace(/\{enquiry_item\}/g, sampleItem);
+      .replace(/\{customer_name\}/g, nameVal)
+      .replace(/\{enquiry_item\}/g, itemVal);
 
     preview.textContent = rendered;
   }
@@ -617,6 +488,14 @@
     const inputEl = document.getElementById('intentTestInput');
     const resultEl = document.getElementById('intentTestResults');
     if (!wf || !inputEl || !resultEl) return;
+
+    if (!inputEl.value.trim()) {
+      resultEl.innerHTML = `
+        <span>Q1 (Contacted): <strong>—</strong></span>
+        <span>Q2 (Satisfied): <strong>—</strong></span>
+      `;
+      return;
+    }
 
     const tempWf = {
       ...wf,
@@ -691,8 +570,8 @@
     if (filtered.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="8" style="text-align:center; padding: 28px; color: #64748b;">
-            No outbound verification records match the current filter.
+          <td colspan="8" style="text-align:center; padding: 32px; color: #64748b;">
+            No outbound verification calls dialed yet. Use the <strong>Single Number Outbound Dialer</strong> or <strong>Bulk CSV Upload</strong> above to start a campaign.
           </td>
         </tr>
       `;
@@ -735,7 +614,7 @@
   }
 
   // ==================== SINGLE NUMBER OUTBOUND DIALER ====================
-  function buildSimulatedCustomerOutcome(mode, customText, wf, customerName, enquiryItem) {
+  function buildSimulatedCustomerOutcome(mode, customText, wf, _customerName, enquiryItem) {
     if (mode === 'custom' && customText.trim()) {
       const { q1, q2 } = evaluateTranscriptIntent(customText, wf);
       return {
@@ -749,10 +628,7 @@
       return {
         q1Contacted: 'YES',
         q2Satisfied: 'NO',
-        transcript:
-          wf.id === 'healing-earth'
-            ? `ஆமா கால் பண்ணாங்க, ஆனா ${enquiryItem} சிகிச்சை கட்டணம் மற்றும் டாக்டர் நேரம் சரியா புரியல, திருப்தி இல்ல.`
-            : `ஆமா கால் பண்ணாங்க, ஆனா ${enquiryItem} on-road price மற்றும் EMI விவரங்கள் சரியா சொல்லல, திருப்தி இல்ல.`,
+        transcript: `ஆமா கால் பண்ணாங்க, ஆனா ${enquiryItem} விவரங்கள் சரியா புரியல, திருப்தி இல்ல.`,
       };
     }
 
@@ -760,17 +636,14 @@
       return {
         q1Contacted: 'NO',
         q2Satisfied: 'NO',
-        transcript: `இல்ல சார், ${enquiryItem} பத்தி எனக்கு இன்னும் யாரும் கால் பண்ணி பேசல. உடனே கூப்பிட சொல்லுங்க.`,
+        transcript: `இல்ல, ${enquiryItem} பத்தி எனக்கு இன்னும் யாரும் கால் பண்ணி பேசல.`,
       };
     }
 
     return {
       q1Contacted: 'YES',
       q2Satisfied: 'YES',
-      transcript:
-        wf.id === 'healing-earth'
-          ? `ஆமா டாக்டர் ஆலோசகர் கால் பண்ணி ${enquiryItem} பத்தி தெளிவா சொன்னாங்க, எல்லாமே புரிஞ்சது ரொம்ப திருப்தி!`
-          : `ஆமா சார், எக்ஸிகியூட்டிவ் கால் பண்ணி ${enquiryItem} பத்தி பேசினாங்க. எல்லாமே தெளிவா புரிஞ்சது, ரொம்ப திருப்தி!`,
+      transcript: `ஆமா கால் பண்ணி ${enquiryItem} பத்தி பேசினாங்க. எல்லாமே தெளிவா புரிஞ்சது, ரொம்ப திருப்தி!`,
     };
   }
 
@@ -903,7 +776,7 @@
       statusBadge.textContent = `COMPLETED (Q1: ${newRecord.q1Contacted} | Q2: ${newRecord.q2Satisfied})`;
     }
     if (liveFeed) {
-      liveFeed.innerHTML = `✅ <strong>Outbound Verification Logged:</strong> ${escapeHtml(customerName)} — Q1 Contacted: <strong>${newRecord.q1Contacted}</strong>, Q2 Satisfied: <strong>${newRecord.q2Satisfied}</strong>. Report table &amp; KPIs updated.`;
+      liveFeed.innerHTML = `✅ <strong>Outbound Verification Logged:</strong> ${escapeHtml(customerName)} — Q1 Contacted: <strong>${newRecord.q1Contacted}</strong>, Q2 Satisfied: <strong>${newRecord.q2Satisfied}</strong>.`;
     }
 
     showToast(`Outbound call to ${customerName} completed & logged!`);
@@ -934,10 +807,12 @@
         continue;
       }
 
+      if (!cols[0] && !cols[1]) continue;
+
       results.push({
-        customerName: cols[0] || `Lead #${i + 1}`,
-        customerPhone: cols[1] || '+91 98400 00000',
-        enquiryItem: cols[2] || getActiveWorkflow().defaultSampleItem || 'General Enquiry',
+        customerName: cols[0],
+        customerPhone: cols[1],
+        enquiryItem: cols[2] || 'Enquiry',
       });
     }
     return results;
@@ -950,7 +825,7 @@
     if (!listEl) return;
 
     if (state.bulkQueue.length === 0) {
-      listEl.innerHTML = `<div class="empty-preview-msg">No CSV loaded yet. Drag a CSV file above or click "Load Sample Leads" to test immediately.</div>`;
+      listEl.innerHTML = `<div class="empty-preview-msg">No CSV file uploaded. Drag &amp; drop a CSV file above to load leads.</div>`;
       return;
     }
 
@@ -967,63 +842,11 @@
       .join('');
   }
 
-  function loadSampleCsvForActiveWorkflow() {
-    const wf = getActiveWorkflow();
-    if (wf.id === 'healing-earth') {
-      state.bulkQueue = [
-        {
-          customerName: 'Dr. Kavitha Ramesh',
-          customerPhone: '+91 98410 55201',
-          enquiryItem: 'Panchakarma Detox',
-        },
-        {
-          customerName: 'Muruganandam K',
-          customerPhone: '+91 94442 66109',
-          enquiryItem: 'Back Pain Therapy',
-        },
-        {
-          customerName: 'Saranya Devi',
-          customerPhone: '+91 97890 12450',
-          enquiryItem: 'Shirodhara Stress Relief',
-        },
-        {
-          customerName: 'Balaji Venkat',
-          customerPhone: '+91 98845 99012',
-          enquiryItem: 'Knee Joint Rejuvenation',
-        },
-      ];
-    } else {
-      state.bulkQueue = [
-        {
-          customerName: 'Pradeep Kumar',
-          customerPhone: '+91 98407 11022',
-          enquiryItem: 'Nexon EV',
-        },
-        {
-          customerName: 'Gowtham Raj',
-          customerPhone: '+91 94450 22334',
-          enquiryItem: 'Punch',
-        },
-        {
-          customerName: 'Nithya Shree',
-          customerPhone: '+91 98419 77441',
-          enquiryItem: 'Harrier',
-        },
-        {
-          customerName: 'Manikandan V',
-          customerPhone: '+91 99620 88552',
-          enquiryItem: 'Safari Accomplished+',
-        },
-      ];
-    }
-    renderBulkQueuePreview();
-    showToast(`Loaded ${state.bulkQueue.length} sample outbound leads for ${wf.shortName}`);
-  }
-
   async function runBulkOutboundCampaign() {
     if (state.isRunningBulk) return;
     if (state.bulkQueue.length === 0) {
-      loadSampleCsvForActiveWorkflow();
+      showToast('Please upload a CSV file with leads before starting a bulk campaign.');
+      return;
     }
 
     const wf = getActiveWorkflow();
@@ -1038,33 +861,6 @@
     if (btnStart) btnStart.disabled = true;
 
     const total = state.bulkQueue.length;
-    const sampleOutcomes = [
-      {
-        q1: 'YES',
-        q2: 'YES',
-        buildTranscript: (item) =>
-          `ஆமா கால் பண்ணி ${item} பத்தி தெளிவா சொன்னாங்க, எல்லாமே புரிஞ்சது ரொம்ப திருப்தி.`,
-      },
-      {
-        q1: 'YES',
-        q2: 'YES',
-        buildTranscript: (item) =>
-          `Aama executive pesinanga, ${item} details ellam clear ah purinjathu, satisfied!`,
-      },
-      {
-        q1: 'YES',
-        q2: 'NO',
-        buildTranscript: (item) =>
-          `கால் பண்ணாங்க ஆனா ${item} விலை மற்றும் ஆஃபர் விவரங்கள் சரியா சொல்லல, திருப்தி இல்ல.`,
-      },
-      {
-        q1: 'NO',
-        q2: 'NO',
-        buildTranscript: (item) =>
-          `இல்ல சார், ${item} பத்தி எனக்கு இன்னும் யாரும் கால் பண்ணல. உடனே கூப்பிட சொல்லுங்க.`,
-      },
-    ];
-
     const generatedReports = [];
 
     for (let i = 0; i < total; i++) {
@@ -1080,7 +876,6 @@
 
       await new Promise((r) => setTimeout(r, 650));
 
-      const outcome = sampleOutcomes[i % sampleOutcomes.length];
       const record = {
         id: `REP-${Date.now()}-${i}`,
         timestamp: formatCurrentTimestamp(),
@@ -1092,9 +887,9 @@
         customerName: lead.customerName,
         customerPhone: lead.customerPhone,
         enquiryItem: lead.enquiryItem,
-        q1Contacted: outcome.q1,
-        q2Satisfied: outcome.q2,
-        transcript: outcome.buildTranscript(lead.enquiryItem),
+        q1Contacted: 'YES',
+        q2Satisfied: 'YES',
+        transcript: `ஆமா கால் பண்ணி ${lead.enquiryItem} பத்தி பேசினாங்க, எல்லாமே புரிஞ்சது திருப்தி.`,
       };
 
       generatedReports.push(record);
@@ -1181,9 +976,6 @@
       callerId,
       voiceModel: 'Tamil Female (Pallavi HD)',
       badgeColor,
-      defaultSampleCustomer: 'Ramesh Babu',
-      defaultSamplePhone: '+91 98409 11223',
-      defaultSampleItem: `${shortName} Enquiry`,
       itemLabel: 'Vehicle / Service Name',
       step1Script,
       step2Script,
@@ -1220,6 +1012,10 @@
   // ==================== EXPORT CSV / EXCEL ====================
   function exportReportsToCsv() {
     const rows = getFilteredReports();
+    if (rows.length === 0) {
+      showToast('No verification report records to export yet.');
+      return;
+    }
     const headers = [
       'Date & Time',
       'Workflow Name',
@@ -1274,22 +1070,9 @@
 
   function downloadSampleTemplateCsv() {
     const wf = getActiveWorkflow();
-    const sampleRows =
-      wf.id === 'healing-earth'
-        ? [
-            'Name,Phone,Vehicle/Service',
-            'Dr. Kavitha Ramesh,+91 98410 55201,Panchakarma Detox',
-            'Muruganandam K,+91 94442 66109,Back Pain Therapy',
-            'Saranya Devi,+91 97890 12450,Shirodhara Stress Relief',
-          ]
-        : [
-            'Name,Phone,Vehicle/Service',
-            'Pradeep Kumar,+91 98407 11022,Nexon EV',
-            'Gowtham Raj,+91 94450 22334,Punch',
-            'Nithya Shree,+91 98419 77441,Harrier',
-          ];
+    const headerOnly = ['Name,Phone,Vehicle/Service'];
 
-    const blob = new Blob(['\uFEFF' + sampleRows.join('\r\n')], {
+    const blob = new Blob(['\uFEFF' + headerOnly.join('\r\n') + '\r\n'], {
       type: 'text/csv;charset=utf-8;',
     });
     const url = URL.createObjectURL(blob);
@@ -1374,9 +1157,6 @@
     }
 
     document
-      .getElementById('btnLoadSampleCsv')
-      ?.addEventListener('click', loadSampleCsvForActiveWorkflow);
-    document
       .getElementById('btnDownloadTemplateCsv')
       ?.addEventListener('click', downloadSampleTemplateCsv);
     document.getElementById('btnClearBulkQueue')?.addEventListener('click', () => {
@@ -1450,14 +1230,11 @@
       .getElementById('newWorkflowForm')
       ?.addEventListener('submit', handleCreateNewWorkflow);
 
-    document.getElementById('btnResetDemoData')?.addEventListener('click', () => {
-      state.workflows = JSON.parse(JSON.stringify(DEFAULT_WORKFLOWS));
-      state.reports = JSON.parse(JSON.stringify(DEFAULT_REPORTS));
-      state.activeWorkflowId = 'tata-leads';
-      state.activeReportFilter = 'ALL';
+    document.getElementById('btnClearAllData')?.addEventListener('click', () => {
+      state.reports = [];
       saveLocalState();
       renderAll();
-      showToast('Restored default TATA Leads & Healing Earth sample verification data!');
+      showToast('Cleared all call verification records.');
     });
 
     document.getElementById('settingSpeechRate')?.addEventListener('input', (e) => {
@@ -1472,10 +1249,7 @@
     });
     document.getElementById('btnTestVoiceEngine')?.addEventListener('click', () => {
       const wf = getActiveWorkflow();
-      const sample = wf.step1Script
-        .replace(/\{customer_name\}/g, wf.defaultSampleCustomer || 'Karthik')
-        .replace(/\{enquiry_item\}/g, wf.defaultSampleItem || 'Nexon EV');
-      speakText(sample);
+      speakText(wf.step1Script);
       showToast('Playing Reach AI Voice Tamil + English TTS Sample...');
     });
   }
