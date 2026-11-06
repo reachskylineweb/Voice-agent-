@@ -430,15 +430,15 @@
     if (elTotal) elTotal.textContent = String(total);
     if (elScope) elScope.textContent = scopeLabel;
     if (elQ1Count) elQ1Count.textContent = String(q1Yes);
-    if (elQ1Pct) elQ1Pct.textContent = `${q1Pct}% YES`;
+    if (elQ1Pct) elQ1Pct.textContent = `${q1Pct}% Yes`;
     if (elQ1Sub) elQ1Sub.textContent = `${q1Yes} of ${total} confirmed staff contact`;
     if (elQ2Count) elQ2Count.textContent = String(q2Yes);
-    if (elQ2Pct) elQ2Pct.textContent = `${q2Pct}% YES`;
+    if (elQ2Pct) elQ2Pct.textContent = `${q2Pct}% Yes`;
     if (elQ2Sub) elQ2Sub.textContent = `${q2Yes} of ${total} understood & satisfied`;
     if (elPending) elPending.textContent = String(pendingNo);
     if (elPendingBadge) {
       const noPct = total > 0 ? Math.round((pendingNo / total) * 100) : 0;
-      elPendingBadge.textContent = `${pendingNo} NO (${noPct}%)`;
+      elPendingBadge.textContent = `${pendingNo} No (${noPct}%)`;
     }
     if (navBadge) navBadge.textContent = String(state.reports.length);
   }
@@ -583,12 +583,12 @@
         const badgeColor = row.workflowBadgeColor || (row.workflowId === 'healing-earth' ? 'emerald' : 'blue');
         const q1Badge =
           row.q1Contacted === 'YES'
-            ? '<span class="badge-yes">✓ YES</span>'
-            : '<span class="badge-no">✕ NO</span>';
+            ? '<span class="badge-yes">Yes</span>'
+            : '<span class="badge-no">No</span>';
         const q2Badge =
           row.q2Satisfied === 'YES'
-            ? '<span class="badge-yes">✓ YES</span>'
-            : '<span class="badge-no">✕ NO</span>';
+            ? '<span class="badge-yes">Yes</span>'
+            : '<span class="badge-no">No</span>';
 
         return `
           <tr>
@@ -692,12 +692,12 @@
     }, 1000);
 
     if (statusBadge) {
-      statusBadge.textContent = 'DIALING OUTBOUND...';
+      statusBadge.textContent = 'Dialing...';
       statusBadge.className = 'console-state dialing';
     }
     setMonitorStep(1);
     if (liveFeed) {
-      liveFeed.innerHTML = `[SIP TRUNK] Routing outbound call to <strong>${escapeHtml(customerName)} (${escapeHtml(customerPhone)})</strong> via <code>${escapeHtml(callerId)}</code> (${escapeHtml(voiceModel)})...`;
+      liveFeed.innerHTML = `Calling <strong>${escapeHtml(customerName)} (${escapeHtml(customerPhone)})</strong> from ${escapeHtml(callerId)}...`;
     }
 
     await new Promise((r) => setTimeout(r, 900));
@@ -707,11 +707,11 @@
       .replace(/\{enquiry_item\}/g, enquiryItem);
 
     if (statusBadge) {
-      statusBadge.textContent = 'CALL CONNECTED • STEP 01';
+      statusBadge.textContent = 'Connected · Step 1';
       statusBadge.className = 'console-state connected';
     }
     if (liveFeed) {
-      liveFeed.innerHTML = `<strong>[AI • ${escapeHtml(wf.shortName)}]:</strong> "${escapeHtml(greetingText)}"`;
+      liveFeed.innerHTML = `<strong>${escapeHtml(wf.shortName)}:</strong> "${escapeHtml(greetingText)}"`;
     }
     speakText(greetingText);
 
@@ -720,7 +720,7 @@
     setMonitorStep(2);
     const q1Prompt = wf.step2Script.replace(/\{enquiry_item\}/g, enquiryItem);
     if (liveFeed) {
-      liveFeed.innerHTML = `<strong>[AI • Q1 Staff Contacted]:</strong> "${escapeHtml(q1Prompt)}"`;
+      liveFeed.innerHTML = `<strong>Q1 (Staff Contacted):</strong> "${escapeHtml(q1Prompt)}"`;
     }
 
     await new Promise((r) => setTimeout(r, 1200));
@@ -735,7 +735,7 @@
     );
 
     if (liveFeed) {
-      liveFeed.innerHTML = `<strong>[CUSTOMER • ${escapeHtml(customerName)}]:</strong> "${escapeHtml(simulated.transcript)}"`;
+      liveFeed.innerHTML = `<strong>${escapeHtml(customerName)}:</strong> "${escapeHtml(simulated.transcript)}"`;
     }
 
     await new Promise((r) => setTimeout(r, 1100));
@@ -773,10 +773,10 @@
 
     clearInterval(timerInterval);
     if (statusBadge) {
-      statusBadge.textContent = `COMPLETED (Q1: ${newRecord.q1Contacted} | Q2: ${newRecord.q2Satisfied})`;
+      statusBadge.textContent = `Completed (Q1: ${newRecord.q1Contacted} · Q2: ${newRecord.q2Satisfied})`;
     }
     if (liveFeed) {
-      liveFeed.innerHTML = `<strong>[LOGGED]:</strong> ${escapeHtml(customerName)} — Q1 Contacted: <strong>${newRecord.q1Contacted}</strong>, Q2 Satisfied: <strong>${newRecord.q2Satisfied}</strong>.`;
+      liveFeed.innerHTML = `Call logged for <strong>${escapeHtml(customerName)}</strong> — Q1: <strong>${newRecord.q1Contacted}</strong>, Q2: <strong>${newRecord.q2Satisfied}</strong>.`;
     }
 
     showToast(`Outbound call to ${customerName} completed & logged!`);
