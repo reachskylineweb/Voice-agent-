@@ -1,119 +1,156 @@
 /**
- * Reach AI Voice — Module 2 Frontend Application (frontend/app.js)
- * Multi-Workflow Outbound Verification Dashboard
+ * Reach AI Voice — Outbound Campaign & Workflow Console (frontend/app.js)
+ *
+ * Designed for seamless Backend REST API integration:
+ * Set API_CONFIG.BASE_URL when the backend is ready. While offline/frontend-only,
+ * all operations automatically persist to localStorage so the entire UI works out of the box.
  */
 
 (function () {
   'use strict';
 
-  const STORAGE_KEYS = {
-    WORKFLOWS: 'reach_ai_voice_workflows_v3',
-    REPORTS: 'reach_ai_voice_reports_v3',
-    ACTIVE_WORKFLOW_ID: 'reach_ai_voice_active_workflow_id_v3',
+  // ==================== BACKEND INTEGRATION CONFIGURATION ====================
+  const API_CONFIG = {
+    BASE_URL: '/api', // Change to e.g. 'http://localhost:5000/api' when backend is deployed
+    ENDPOINTS: {
+      CLIENTS: '/clients', // GET all, POST new, PUT /:id, DELETE /:id
+      CLIENT_LEADS: (clientId) => `/clients/${clientId}/leads`, // POST upload/scan leads
+      CALL_RESULT: (clientId, leadId) => `/clients/${clientId}/leads/${leadId}/call`, // POST call outcome
+      TRAINER: (clientId) => `/clients/${clientId}/trainer`, // PUT LLM trainer rules
+      REPORTS: '/reports', // GET overall verification report
+    },
   };
 
-  // ==================== PRE-CONFIGURED WORKFLOWS (NO DUMMY CALL DATA) ====================
-  const DEFAULT_WORKFLOWS = [
+  const STORAGE_KEY = 'reach_ai_voice_platform_state_v4';
+
+  // ==================== DEFAULT INITIAL CLIENT WORKFLOWS (0 DUMMY LEADS) ====================
+  const DEFAULT_CLIENTS = [
     {
-      id: 'tata-leads',
-      name: 'TATA Leads Enquiry Verification',
-      shortName: 'TATA Leads',
-      subtitle: 'Vehicle Enquiry & Test-Drive Follow-Up',
-      description:
-        'Automated outbound verification calls for TATA Motors vehicle enquiries, executive contact check (Q1), and customer satisfaction (Q2).',
-      callerId: 'Dedicated TATA: +91 98765 11111',
-      voiceModel: 'Tamil Female (Pallavi HD)',
-      badgeColor: 'blue',
-      itemLabel: 'Vehicle Model Enquired',
-      step1Script:
-        'வணக்கம் {customer_name}, நான் TATA Motors வாடிக்கையாளர் சேவை மையத்திலிருந்து பேசுகிறேன். நீங்கள் சமீபத்தில் {enquiry_item} வாகனம் குறித்து விசாரித்தீர்கள். Hello {customer_name}, we are calling from TATA Motors regarding your recent enquiry for {enquiry_item}.',
-      step2Script:
-        'எங்கள் விற்பனை பிரதிநிதி (Sales Executive) உங்களை தொடர்பு கொண்டு {enquiry_item} பற்றிய விவரங்களை பேசினாரா? Did our sales executive contact you and share the vehicle details?',
-      q1YesKeywords:
-        'ஆமா, ஆமாம், பேசினாங்க, கால் பண்ணாங்க, கூப்பிட்டாங்க, வந்தாங்க, aama, aamam, pesinanga, call pannanga, spoke, contacted, called, yes, yeah, sure, met',
-      q1NoKeywords:
-        'இல்ல, இல்லை, பேசல, கால் பண்ணல, யாரும் கூப்பிடல, இன்னும் இல்ல, illa, illai, pesala, call pannala, yarum koopidala, no, not yet, nobody called, didnt call',
-      step3Script:
-        'வாகனத்தின் விலை, சிறப்பம்சங்கள் மற்றும் Test Drive விவரங்கள் உங்களுக்கு தெளிவாக புரிந்ததா மற்றும் திருப்திகரமாக இருந்ததா? Did you clearly understand the pricing & features, and are you satisfied with the explanation?',
-      q2YesKeywords:
-        'புரிஞ்சது, தெளிவா சொன்னாங்க, திருப்தி, ரொம்ப நல்லா, ஓகே, சூப்பர், purinjathu, theliva sonnanga, thirupthi, nalla sonnanga, ok, satisfied, understood, clear, good, yes, happy, aama',
-      q2NoKeywords:
-        'புரியல, திருப்தி இல்ல, சரியா சொல்லல, டவுட் இருக்கு, இன்னும் தகவல் வேணும், puriyala, thirupthi illa, sariya sollala, doubt irukku, no, not satisfied, confused, unclear, illa, callback',
+      id: 'client-tata',
+      name: 'TATA Leads',
+      industry: 'Automobile Enquiry Verification',
+      callerId: '+91 98765 11111',
+      voiceLanguage: 'Tamil + English (Pallavi HD)',
+      openingGreeting:
+        'வணக்கம் {lead_name}, நான் TATA Motors வாடிக்கையாளர் சேவை மையத்திலிருந்து பேசுகிறேன். நீங்கள் {enquiry_item} குறித்து விசாரித்தீர்கள்.',
+      questions: [
+        {
+          id: 'q1',
+          text: 'எங்கள் விற்பனை பிரதிநிதி (Sales Executive) உங்களை தொடர்பு கொண்டு பேசினாரா? (Did our staff contact you?)',
+        },
+        {
+          id: 'q2',
+          text: 'வாகன விவரங்கள் உங்களுக்கு தெளிவாக புரிந்ததா மற்றும் திருப்திகரமாக இருந்ததா? (Did you understand & are you satisfied?)',
+        },
+      ],
+      trainer: {
+        persona: 'Polite, warm Tamil & English bilingual verification executive',
+        whatToSpeak:
+          '- Greet the customer by name and confirm their TATA vehicle enquiry\n- Ask each configured workflow question clearly\n- Thank the customer politely before ending the call',
+        forbiddenPhrases: 'Unofficial cash discounts, competitor comparisons',
+        whatNotToSpeak:
+          '- Never quote unapproved on-road discounts\n- Never argue if the customer says they are not interested\n- Do not continue if the customer says they are driving',
+        positiveKeywords:
+          'ஆமா, ஆமாம், பேசினாங்க, கால் பண்ணாங்க, புரிஞ்சது, திருப்தி, aama, yes, spoke, contacted, satisfied, interested, ok',
+        negativeKeywords:
+          'இல்ல, இல்லை, பேசல, புரியல, திருப்தி இல்ல, வேண்டாம், illa, no, not contacted, not interested, dissatisfied',
+      },
+      leads: [],
     },
     {
-      id: 'healing-earth',
-      name: 'Healing Earth Service Verification',
-      shortName: 'Healing Earth',
-      subtitle: 'Ayurveda Therapy & Consultation Follow-Up',
-      description:
-        'Automated outbound verification calls for Healing Earth Ayurveda Hospital treatment enquiries, doctor/counselor contact check (Q1), and therapy clarity (Q2).',
-      callerId: 'Dedicated Healing Earth: +91 98765 22222',
-      voiceModel: 'Tamil Female (Pallavi HD)',
-      badgeColor: 'emerald',
-      itemLabel: 'Treatment / Service Enquired',
-      step1Script:
-        'வணக்கம் {customer_name}, நான் Healing Earth ஆயுர்வேத மருத்துவமனையிலிருந்து பேசுகிறேன். நீங்கள் {enquiry_item} சிகிச்சை குறித்து விசாரித்தீர்கள். Hello {customer_name}, greetings from Healing Earth Ayurveda regarding your enquiry for {enquiry_item}.',
-      step2Script:
-        'எங்கள் மருத்துவ ஆலோசகர் (Health Counselor) உங்களை தொடர்பு கொண்டு {enquiry_item} சிகிச்சை முறைகள் பற்றி பேசினாரா? Did our wellness counselor contact you regarding your treatment plan?',
-      q1YesKeywords:
-        'ஆமா, ஆமாம், டாக்டர் பேசினாங்க, கால் பண்ணாங்க, சொன்னாங்க, aama, aamam, pesinanga, doctor spoke, call pannanga, yes, yeah, contacted, called, spoke',
-      q1NoKeywords:
-        'இல்ல, இல்லை, பேசல, கால் பண்ணல, யாரும் பேசல, illa, illai, pesala, call pannala, no, not yet, nobody called, waiting',
-      step3Script:
-        'சிகிச்சை விவரங்கள் மற்றும் கட்டண முறைகள் உங்களுக்கு தெளிவாக புரிந்ததா மற்றும் திருப்தியாக உள்ளதா? Did you clearly understand the treatment process and are you satisfied with the guidance?',
-      q2YesKeywords:
-        'புரிஞ்சது, திருப்தி, தெளிவா சொன்னாங்க, நல்லா இருந்துச்சு, ஓகே, ஆமா, purinjathu, thirupthi, theliva sonnanga, satisfied, understood, clear, yes, good, happy',
-      q2NoKeywords:
-        'புரியல, திருப்தி இல்ல, சந்தேகம் இருக்கு, சரியா சொல்லல, puriyala, thirupthi illa, doubt irukku, sariya sollala, no, not satisfied, unclear, illa',
+      id: 'client-healing-earth',
+      name: 'Healing Earth',
+      industry: 'Healthcare & Ayurveda Service Verification',
+      callerId: '+91 98765 22222',
+      voiceLanguage: 'Tamil + English (Pallavi HD)',
+      openingGreeting:
+        'வணக்கம் {lead_name}, நான் Healing Earth ஆயுர்வேத மருத்துவமனையிலிருந்து பேசுகிறேன். நீங்கள் {enquiry_item} சிகிச்சை குறித்து விசாரித்தீர்கள்.',
+      questions: [
+        {
+          id: 'q1',
+          text: 'எங்கள் மருத்துவ ஆலோசகர் (Health Counselor) உங்களை தொடர்பு கொண்டு பேசினாரா? (Did our counselor contact you?)',
+        },
+        {
+          id: 'q2',
+          text: 'சிகிச்சை விவரங்கள் மற்றும் கட்டண முறைகள் உங்களுக்கு தெளிவாக புரிந்ததா? (Are you satisfied with the explanation?)',
+        },
+      ],
+      trainer: {
+        persona: 'Empathetic, calm healthcare verification coordinator (Tamil & English)',
+        whatToSpeak:
+          '- Greet the patient warmly and confirm the therapy/service enquired\n- Verify whether the counselor contacted them and explained the therapy clearly\n- Offer a callback if they have pending questions',
+        forbiddenPhrases: 'Guaranteed instant cure claims, unverified medical advice',
+        whatNotToSpeak:
+          '- Never give unapproved medical prescriptions over the phone\n- Never pressure patients who decline consultation',
+        positiveKeywords:
+          'ஆமா, ஆமாம், டாக்டர் பேசினாங்க, புரிஞ்சது, திருப்தி, aama, yes, contacted, understood, satisfied',
+        negativeKeywords:
+          'இல்ல, இல்லை, பேசல, புரியல, திருப்தி இல்ல, வேண்டாம், illa, no, nobody called, not interested',
+      },
+      leads: [],
     },
   ];
 
-  // Empty reports array — no dummy call records
-  const DEFAULT_REPORTS = [];
-
   // ==================== APPLICATION STATE ====================
   const state = {
-    workflows: [],
-    reports: [],
-    activeWorkflowId: 'tata-leads',
-    activeView: 'campaign',
-    activeReportFilter: 'ALL',
-    reportSearchQuery: '',
-    bulkQueue: [],
-    isDialingSingle: false,
-    isRunningBulk: false,
-    backendConnected: false,
-    speechRate: 1.0,
-    speechPitch: 1.0,
+    clients: [],
+    activeView: 'dashboard', // 'dashboard' | 'workflows' | 'outbound' | 'trainer' | 'reports'
+    selectedOutboundClientId: null, // null = show client cards grid; string = show client campaign page
+    activeClientLeadTab: 'ALL', // 'ALL' | 'QUALIFIED' | 'NOT_QUALIFIED' | 'NOT_ATTENDED'
+    activeReportClientFilter: 'ALL',
+    activeReportStatusFilter: 'ALL',
+    editingQuestionsDraft: [],
+    // Call runner state
+    isCallingActive: false,
+    stopAfterCurrentCall: false,
+    currentlyCallingLeadId: null,
   };
 
-  // ==================== UTILITY HELPERS ====================
-  function formatCurrentTimestamp() {
-    const now = new Date();
-    return now.toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
+  // ==================== STORAGE & API SERVICE ====================
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.clients) && parsed.clients.length > 0) {
+          state.clients = parsed.clients;
+          return;
+        }
+      }
+    } catch (_e) {
+      // ignore storage errors
+    }
+    state.clients = JSON.parse(JSON.stringify(DEFAULT_CLIENTS));
   }
 
-  function showToast(message) {
-    const container = document.getElementById('toastContainer');
-    if (!container) return;
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.innerHTML = `<span class="signal-dot"></span><span>${escapeHtml(message)}</span>`;
-    container.appendChild(toast);
-    setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transition = 'opacity 0.25s ease';
-      setTimeout(() => toast.remove(), 260);
-    }, 3400);
+  function saveState() {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          clients: state.clients,
+        })
+      );
+    } catch (_e) {
+      // ignore storage errors
+    }
   }
 
+  async function tryApiCall(path, options = {}) {
+    try {
+      const res = await fetch(`${API_CONFIG.BASE_URL}${path}`, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options,
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (_err) {
+      // Frontend-only mode: silently use local state
+      return null;
+    }
+  }
+
+  // ==================== UTILITIES ====================
   function escapeHtml(str) {
     return String(str ?? '')
       .replace(/&/g, '&amp;')
@@ -123,678 +160,520 @@
       .replace(/'/g, '&#039;');
   }
 
-  function getActiveWorkflow() {
-    return (
-      state.workflows.find((w) => w.id === state.activeWorkflowId) ||
-      state.workflows[0]
-    );
+  function formatNow() {
+    return new Date().toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
   }
 
-  function saveLocalState() {
-    try {
-      localStorage.setItem(STORAGE_KEYS.WORKFLOWS, JSON.stringify(state.workflows));
-      localStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(state.reports));
-      localStorage.setItem(STORAGE_KEYS.ACTIVE_WORKFLOW_ID, state.activeWorkflowId);
-    } catch (_err) {
-      // Ignore storage quota errors
-    }
+  function showToast(msg) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.innerHTML = `<span class="status-dot"></span><span>${escapeHtml(msg)}</span>`;
+    container.appendChild(el);
+    setTimeout(() => {
+      el.style.opacity = '0';
+      el.style.transition = 'opacity 0.25s ease';
+      setTimeout(() => el.remove(), 250);
+    }, 3200);
   }
 
-  function loadLocalState() {
-    try {
-      // Clean up legacy v2 keys that contained dummy data
-      localStorage.removeItem('askeva_outbound_workflows_v2');
-      localStorage.removeItem('askeva_outbound_reports_v2');
-      localStorage.removeItem('askeva_active_workflow_id_v2');
-      localStorage.removeItem('reach_ai_voice_workflows_v2');
-      localStorage.removeItem('reach_ai_voice_reports_v2');
-      localStorage.removeItem('reach_ai_voice_active_workflow_id_v2');
-
-      const savedWf = localStorage.getItem(STORAGE_KEYS.WORKFLOWS);
-      const savedRep = localStorage.getItem(STORAGE_KEYS.REPORTS);
-      const savedActiveId = localStorage.getItem(STORAGE_KEYS.ACTIVE_WORKFLOW_ID);
-
-      state.workflows = savedWf ? JSON.parse(savedWf) : JSON.parse(JSON.stringify(DEFAULT_WORKFLOWS));
-      state.reports = savedRep ? JSON.parse(savedRep) : JSON.parse(JSON.stringify(DEFAULT_REPORTS));
-      if (savedActiveId && state.workflows.some((w) => w.id === savedActiveId)) {
-        state.activeWorkflowId = savedActiveId;
-      }
-    } catch (_err) {
-      state.workflows = JSON.parse(JSON.stringify(DEFAULT_WORKFLOWS));
-      state.reports = [];
-    }
+  function getClientById(clientId) {
+    return state.clients.find((c) => c.id === clientId) || null;
   }
 
-  // ==================== BACKEND API WITH AUTOMATIC FALLBACK ====================
-  async function apiRequest(endpoint, options = {}) {
-    try {
-      const res = await fetch(endpoint, {
-        headers: { 'Content-Type': 'application/json' },
-        ...options,
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      updateConnectionBanner(true);
-      return { ok: true, data };
-    } catch (_err) {
-      updateConnectionBanner(false);
-      return { ok: false, data: null };
-    }
+  function computeClientStats(client) {
+    const leads = Array.isArray(client.leads) ? client.leads : [];
+    const assigned = leads.length;
+    const qualified = leads.filter((l) => l.status === 'QUALIFIED').length;
+    const notQualified = leads.filter((l) => l.status === 'NOT_QUALIFIED').length;
+    const notAttended = leads.filter((l) => l.status === 'NOT_ATTENDED').length;
+    const pending = leads.filter((l) => l.status === 'PENDING').length;
+    const spoken = qualified + notQualified + notAttended;
+
+    return {
+      assigned,
+      spoken,
+      pending,
+      qualified,
+      notQualified,
+      notAttended,
+    };
   }
 
-  function updateConnectionBanner(isBackendLive) {
-    state.backendConnected = isBackendLive;
-    const dot = document.getElementById('apiConnectionDot');
-    const text = document.getElementById('apiConnectionText');
-    if (!dot || !text) return;
+  function computeGlobalStats(filterClientId = 'ALL') {
+    const targetClients =
+      filterClientId === 'ALL'
+        ? state.clients
+        : state.clients.filter((c) => c.id === filterClientId);
 
-    if (isBackendLive) {
-      dot.style.backgroundColor = '#10b981';
-      text.textContent = 'Backend REST API Connected';
-    } else {
-      dot.style.backgroundColor = '#38bdf8';
-      text.textContent = 'Frontend UI Active';
-    }
+    const totals = {
+      clientsCount: state.clients.length,
+      assigned: 0,
+      spoken: 0,
+      pending: 0,
+      qualified: 0,
+      notQualified: 0,
+      notAttended: 0,
+    };
+
+    targetClients.forEach((c) => {
+      const s = computeClientStats(c);
+      totals.assigned += s.assigned;
+      totals.spoken += s.spoken;
+      totals.pending += s.pending;
+      totals.qualified += s.qualified;
+      totals.notQualified += s.notQualified;
+      totals.notAttended += s.notAttended;
+    });
+
+    return totals;
   }
 
-  async function syncWithBackendOnBoot() {
-    loadLocalState();
+  // ==================== NAVIGATION ====================
+  function switchView(viewName) {
+    state.activeView = viewName;
 
-    const [wfRes, repRes] = await Promise.all([
-      apiRequest('/api/workflows', { method: 'GET' }),
-      apiRequest('/api/reports', { method: 'GET' }),
-    ]);
+    document.querySelectorAll('#mainNavTabs .nav-tab').forEach((btn) => {
+      btn.classList.toggle('active', btn.getAttribute('data-view') === viewName);
+    });
 
-    if (wfRes.ok && Array.isArray(wfRes.data?.workflows) && wfRes.data.workflows.length > 0) {
-      state.workflows = wfRes.data.workflows;
-    }
-    if (repRes.ok && Array.isArray(repRes.data?.reports)) {
-      state.reports = repRes.data.reports;
-    }
+    document.querySelectorAll('.view-section').forEach((sec) => {
+      sec.classList.toggle('active', sec.id === `view-${viewName}`);
+    });
 
-    saveLocalState();
     renderAll();
   }
 
-  // ==================== KEYWORD INTENT CLASSIFIER ====================
-  function parseKeywords(rawText) {
-    return String(rawText || '')
-      .split(',')
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean);
+  function openClientOutboundCampaign(clientId) {
+    state.selectedOutboundClientId = clientId;
+    state.activeClientLeadTab = 'ALL';
+    switchView('outbound');
   }
 
-  function evaluateTranscriptIntent(transcript, workflow) {
-    const text = String(transcript || '').toLowerCase();
-    const q1YesList = parseKeywords(workflow.q1YesKeywords);
-    const q1NoList = parseKeywords(workflow.q1NoKeywords);
-    const q2YesList = parseKeywords(workflow.q2YesKeywords);
-    const q2NoList = parseKeywords(workflow.q2NoKeywords);
+  function loadClientIntoWorkflowEditor(clientId) {
+    const client = getClientById(clientId);
+    if (!client) return;
 
-    let q1 = 'YES';
-    const hasQ1No = q1NoList.some((kw) => text.includes(kw));
-    const hasQ1Yes = q1YesList.some((kw) => text.includes(kw));
-    if (hasQ1No && !hasQ1Yes) {
-      q1 = 'NO';
-    } else if (hasQ1Yes) {
-      q1 = 'YES';
-    }
+    switchView('workflows');
 
-    let q2 = 'YES';
-    const hasQ2No = q2NoList.some((kw) => text.includes(kw));
-    const hasQ2Yes = q2YesList.some((kw) => text.includes(kw));
+    document.getElementById('wfClientId').value = client.id;
+    document.getElementById('wfClientName').value = client.name;
+    document.getElementById('wfIndustry').value = client.industry || '';
+    document.getElementById('wfCallerId').value = client.callerId || '';
+    document.getElementById('wfVoiceLanguage').value =
+      client.voiceLanguage || 'Tamil + English (Pallavi HD)';
+    document.getElementById('wfOpeningGreeting').value = client.openingGreeting || '';
 
-    if (q1 === 'NO') {
-      q2 = 'NO';
-    } else if (hasQ2No) {
-      q2 = 'NO';
-    } else if (hasQ2Yes) {
-      q2 = 'YES';
-    }
+    document.getElementById('wfFormHeading').textContent = `Edit Workflow: ${client.name}`;
+    document.getElementById('wfFormModeBadge').textContent = 'Editing Workflow';
 
-    return { q1, q2 };
+    state.editingQuestionsDraft = JSON.parse(JSON.stringify(client.questions || []));
+    renderQuestionsBuilderRows();
   }
 
-  // ==================== WEB SPEECH TTS HELPER ====================
-  function speakText(text) {
-    const chk = document.getElementById('chkSpeakAudio');
-    if (!chk || !chk.checked || !('speechSynthesis' in window)) return;
-    try {
-      window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.rate = state.speechRate || 1.0;
-      utter.pitch = state.speechPitch || 1.0;
-      const voices = window.speechSynthesis.getVoices();
-      const voiceModel = document.getElementById('voiceModelSelect')?.value || '';
-      let chosen = null;
-      if (voiceModel.includes('Tamil')) {
-        chosen = voices.find((v) => v.lang.toLowerCase().includes('ta'));
-      }
-      if (!chosen) {
-        chosen = voices.find((v) => v.lang.toLowerCase().includes('en-in')) || voices[0];
-      }
-      if (chosen) utter.voice = chosen;
-      window.speechSynthesis.speak(utter);
-    } catch (_e) {
-      // Ignore browser speech synthesis errors
-    }
+  function resetWorkflowEditorToNew() {
+    document.getElementById('wfClientId').value = '';
+    document.getElementById('wfClientName').value = '';
+    document.getElementById('wfIndustry').value = '';
+    document.getElementById('wfCallerId').value = '+91 98765 00000';
+    document.getElementById('wfOpeningGreeting').value =
+      'வணக்கம் {lead_name}, நான் {client_name} இலிருந்து பேசுகிறேன். நீங்கள் {enquiry_item} குறித்து விசாரித்தீர்கள்.';
+
+    document.getElementById('wfFormHeading').textContent = 'Add New Client & Workflow';
+    document.getElementById('wfFormModeBadge').textContent = 'New Client';
+
+    state.editingQuestionsDraft = [
+      {
+        id: 'q1',
+        text: 'எங்கள் அதிகாரிகள் உங்களை தொடர்பு கொண்டு பேசினார்களா? (Did our staff contact you?)',
+      },
+      {
+        id: 'q2',
+        text: 'விவரங்கள் உங்களுக்கு தெளிவாக புரிந்ததா மற்றும் திருப்திகரமாக இருந்ததா? (Are you satisfied with the details?)',
+      },
+    ];
+    renderQuestionsBuilderRows();
   }
 
-  // ==================== RENDER FUNCTIONS ====================
+  // ==================== RENDER ALL VIEWS ====================
   function renderAll() {
-    renderSidebarWorkflows();
-    renderWorkflowDropdowns();
-    renderTopbar();
-    renderKPIs();
+    const globalStats = computeGlobalStats('ALL');
+
+    // Update topbar & sidebar counters
+    const navBadge = document.getElementById('navClientCountBadge');
+    const topClientCount = document.getElementById('topbarClientCount');
+    if (navBadge) navBadge.textContent = String(state.clients.length);
+    if (topClientCount) topClientCount.textContent = String(state.clients.length);
+
+    renderDashboardView(globalStats);
+    renderWorkflowsView();
+    renderOutboundView();
     renderTrainerView();
-    renderReportsTable();
+    renderReportsView();
   }
 
-  // 1. Left Sidebar Workflows
-  function renderSidebarWorkflows() {
-    const listEl = document.getElementById('sidebarWorkflowList');
-    const countEl = document.getElementById('sidebarWorkflowCount');
-    if (!listEl) return;
+  // -------------------- PAGE 1: DASHBOARD --------------------
+  function renderDashboardView(stats) {
+    document.getElementById('dashTotalClients').textContent = String(stats.clientsCount);
+    document.getElementById('dashTotalLeads').textContent = String(stats.assigned);
+    document.getElementById('dashCallsSpoken').textContent = String(stats.spoken);
+    document.getElementById('dashPendingCallsFoot').textContent = `${stats.pending} pending calls`;
+    document.getElementById('dashQualifiedCount').textContent = String(stats.qualified);
+    document.getElementById('dashNotQualifiedCount').textContent = String(stats.notQualified);
+    document.getElementById('dashNotAttendedCount').textContent = String(stats.notAttended);
 
-    if (countEl) countEl.textContent = String(state.workflows.length);
+    const grid = document.getElementById('dashboardClientCardsGrid');
+    if (!grid) return;
 
-    listEl.innerHTML = state.workflows
-      .map((wf) => {
-        const isActive = wf.id === state.activeWorkflowId;
-        const callCount = state.reports.filter((r) => r.workflowId === wf.id).length;
+    grid.innerHTML = buildClientCardsHtml();
+    bindClientCardEvents(grid);
+  }
+
+  function buildClientCardsHtml() {
+    if (state.clients.length === 0) {
+      return `<div style="padding: 24px; color: #706b63;">No clients added yet. Click "+ Add Client Workflow" to create your first client.</div>`;
+    }
+
+    return state.clients
+      .map((client) => {
+        const s = computeClientStats(client);
+        const qCount = (client.questions || []).length;
         return `
-          <button type="button" class="workflow-item-btn ${isActive ? 'active' : ''}" data-workflow-id="${escapeHtml(wf.id)}">
-            <div class="wf-item-left">
-              <span class="wf-color-dot ${escapeHtml(wf.badgeColor || 'blue')}"></span>
-              <div class="wf-item-titles">
-                <span class="wf-short-name">${escapeHtml(wf.shortName || wf.name)}</span>
-                <span class="wf-sub-caption">${escapeHtml(wf.subtitle || wf.name)}</span>
+          <div class="client-card" data-open-client-id="${escapeHtml(client.id)}">
+            <div class="client-card-top">
+              <div>
+                <div class="client-card-name">${escapeHtml(client.name)}</div>
+                <div class="client-card-category">${escapeHtml(client.industry)}</div>
+              </div>
+              <span class="client-card-badge">${qCount} Questions</span>
+            </div>
+
+            <div class="client-card-stats">
+              <div>
+                <span class="stat-mini-val">${s.assigned}</span>
+                <span class="stat-mini-lbl">Assigned</span>
+              </div>
+              <div>
+                <span class="stat-mini-val text-positive">${s.qualified}</span>
+                <span class="stat-mini-lbl">Qualified</span>
+              </div>
+              <div>
+                <span class="stat-mini-val text-negative">${s.notQualified}</span>
+                <span class="stat-mini-lbl">Not Qual.</span>
+              </div>
+              <div>
+                <span class="stat-mini-val text-warning">${s.notAttended}</span>
+                <span class="stat-mini-lbl">Unattended</span>
               </div>
             </div>
-            <span class="wf-call-count">${callCount}</span>
-          </button>
+
+            <div class="client-card-footer">
+              <button type="button" class="btn-ghost btn-xs" data-edit-wf-id="${escapeHtml(client.id)}">
+                Edit Workflow
+              </button>
+              <button type="button" class="btn-solid btn-xs" data-open-client-btn="${escapeHtml(client.id)}">
+                Open Outbound Calls →
+              </button>
+            </div>
+          </div>
         `;
       })
       .join('');
+  }
 
-    listEl.querySelectorAll('.workflow-item-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const wfId = btn.getAttribute('data-workflow-id');
-        if (wfId) selectWorkflow(wfId);
+  function bindClientCardEvents(container) {
+    container.querySelectorAll('[data-edit-wf-id]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        loadClientIntoWorkflowEditor(btn.getAttribute('data-edit-wf-id'));
+      });
+    });
+
+    container.querySelectorAll('[data-open-client-id]').forEach((card) => {
+      card.addEventListener('click', () => {
+        openClientOutboundCampaign(card.getAttribute('data-open-client-id'));
       });
     });
   }
 
-  function selectWorkflow(workflowId) {
-    const wf = state.workflows.find((w) => w.id === workflowId);
-    if (!wf) return;
-    state.activeWorkflowId = wf.id;
+  // -------------------- PAGE 2: CLIENT WORKFLOW BUILDER --------------------
+  function renderQuestionsBuilderRows() {
+    const listEl = document.getElementById('wfQuestionsList');
+    if (!listEl) return;
 
-    const callerSelect = document.getElementById('callerIdSelect');
-    if (callerSelect && wf.callerId) {
-      callerSelect.value = wf.callerId;
-    }
-    const voiceSelect = document.getElementById('voiceModelSelect');
-    if (voiceSelect && wf.voiceModel) {
-      voiceSelect.value = wf.voiceModel;
-    }
-
-    const itemLabel = document.getElementById('lblSingleEnquiryItem');
-    if (itemLabel && wf.itemLabel) {
-      itemLabel.innerHTML = `${escapeHtml(wf.itemLabel)} <span class="req">*</span>`;
-    }
-
-    saveLocalState();
-    renderAll();
-  }
-
-  function renderWorkflowDropdowns() {
-    const campaignSelect = document.getElementById('workflowSelect');
-    const trainerSelect = document.getElementById('trainerWorkflowSelect');
-
-    const optionsHtml = state.workflows
+    listEl.innerHTML = state.editingQuestionsDraft
       .map(
-        (wf) =>
-          `<option value="${escapeHtml(wf.id)}" ${
-            wf.id === state.activeWorkflowId ? 'selected' : ''
-          }>${escapeHtml(wf.name)}</option>`
+        (q, idx) => `
+        <div class="question-item-row" data-q-index="${idx}">
+          <div class="question-row-top">
+            <span class="question-badge">Question Q${idx + 1}</span>
+            ${
+              state.editingQuestionsDraft.length > 1
+                ? `<button type="button" class="btn-remove-question" data-remove-q="${idx}">Remove</button>`
+                : ''
+            }
+          </div>
+          <input
+            type="text"
+            class="field-input question-text-input"
+            data-q-input="${idx}"
+            value="${escapeHtml(q.text)}"
+            placeholder="Enter the question the voice agent should ask (Yes / No question)"
+            required
+          />
+        </div>
+      `
       )
       .join('');
 
-    if (campaignSelect) campaignSelect.innerHTML = optionsHtml;
-    if (trainerSelect) trainerSelect.innerHTML = optionsHtml;
+    listEl.querySelectorAll('.question-text-input').forEach((inp) => {
+      inp.addEventListener('input', (e) => {
+        const i = Number(inp.getAttribute('data-q-input'));
+        if (state.editingQuestionsDraft[i]) {
+          state.editingQuestionsDraft[i].text = e.target.value;
+        }
+      });
+    });
+
+    listEl.querySelectorAll('[data-remove-q]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const i = Number(btn.getAttribute('data-remove-q'));
+        state.editingQuestionsDraft.splice(i, 1);
+        renderQuestionsBuilderRows();
+      });
+    });
   }
 
-  function renderTopbar() {
-    const wf = getActiveWorkflow();
-    if (!wf) return;
+  function renderWorkflowsView() {
+    const container = document.getElementById('savedWorkflowsListContainer');
+    if (!container) return;
 
-    const badge = document.getElementById('topbarWorkflowBadge');
-    const desc = document.getElementById('topbarWorkflowDescription');
-    const callerChip = document.getElementById('topbarCallerIdValue');
-    const monitorCallerPreview = document.getElementById('monitorCallerIdPreview');
-    const callerSelect = document.getElementById('callerIdSelect');
+    container.innerHTML = state.clients
+      .map((client) => {
+        const questionsHtml = (client.questions || [])
+          .map(
+            (q, idx) =>
+              `<li><strong>Q${idx + 1}:</strong> ${escapeHtml(q.text)}</li>`
+          )
+          .join('');
 
-    if (badge) {
-      badge.innerHTML = `Workflow: <strong>${escapeHtml(wf.shortName || wf.name)}</strong>`;
-    }
-    if (desc) {
-      desc.textContent = wf.description || `Outbound verification workflow for ${wf.name}`;
-    }
-    const currentCallerId = callerSelect?.value || wf.callerId;
-    if (callerChip) callerChip.textContent = currentCallerId;
-    if (monitorCallerPreview) monitorCallerPreview.textContent = currentCallerId;
-  }
+        return `
+          <div class="saved-wf-card">
+            <div class="saved-wf-top">
+              <div>
+                <div class="saved-wf-title">${escapeHtml(client.name)}</div>
+                <div class="saved-wf-sub">${escapeHtml(client.industry)} • Caller ID: ${escapeHtml(client.callerId)}</div>
+              </div>
+              <span class="mode-pill">${(client.questions || []).length} Questions</span>
+            </div>
 
-  // 2. Top KPI Summary Cards (Dynamic calculation based on selected workflow/filter)
-  function renderKPIs() {
-    let scopedReports = state.reports;
-    let scopeLabel = 'All Workflows';
+            <ul class="saved-wf-questions">
+              ${questionsHtml}
+            </ul>
 
-    if (state.activeReportFilter === 'tata-leads') {
-      scopedReports = state.reports.filter((r) => r.workflowId === 'tata-leads');
-      scopeLabel = 'TATA Leads';
-    } else if (state.activeReportFilter === 'healing-earth') {
-      scopedReports = state.reports.filter((r) => r.workflowId === 'healing-earth');
-      scopeLabel = 'Healing Earth';
-    } else if (state.activeReportFilter === 'NEEDS_FOLLOWUP') {
-      scopedReports = state.reports.filter(
-        (r) => r.q1Contacted === 'NO' || r.q2Satisfied === 'NO'
+            <div class="saved-wf-actions">
+              <button type="button" class="btn-solid btn-xs" data-wf-open-calls="${escapeHtml(client.id)}">
+                Open Outbound Calls
+              </button>
+              <button type="button" class="btn-ghost btn-xs" data-wf-edit="${escapeHtml(client.id)}">
+                Edit Workflow &amp; Questions
+              </button>
+              ${
+                state.clients.length > 1
+                  ? `<button type="button" class="btn-ghost btn-xs" data-wf-delete="${escapeHtml(client.id)}">Delete</button>`
+                  : ''
+              }
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+
+    container.querySelectorAll('[data-wf-edit]').forEach((btn) => {
+      btn.addEventListener('click', () =>
+        loadClientIntoWorkflowEditor(btn.getAttribute('data-wf-edit'))
       );
-      scopeLabel = 'Follow-Up Filter';
-    }
+    });
 
-    const total = scopedReports.length;
-    const q1Yes = scopedReports.filter((r) => r.q1Contacted === 'YES').length;
-    const q2Yes = scopedReports.filter((r) => r.q2Satisfied === 'YES').length;
-    const pendingNo = scopedReports.filter(
-      (r) => r.q1Contacted === 'NO' || r.q2Satisfied === 'NO'
-    ).length;
+    container.querySelectorAll('[data-wf-open-calls]').forEach((btn) => {
+      btn.addEventListener('click', () =>
+        openClientOutboundCampaign(btn.getAttribute('data-wf-open-calls'))
+      );
+    });
 
-    const q1Pct = total > 0 ? Math.round((q1Yes / total) * 100) : 0;
-    const q2Pct = total > 0 ? Math.round((q2Yes / total) * 100) : 0;
-
-    const elTotal = document.getElementById('kpiTotalCalls');
-    const elScope = document.getElementById('kpiScopeLabel');
-    const elQ1Count = document.getElementById('kpiQ1YesCount');
-    const elQ1Pct = document.getElementById('kpiQ1YesPercent');
-    const elQ1Sub = document.getElementById('kpiQ1Subtext');
-    const elQ2Count = document.getElementById('kpiQ2YesCount');
-    const elQ2Pct = document.getElementById('kpiQ2YesPercent');
-    const elQ2Sub = document.getElementById('kpiQ2Subtext');
-    const elPending = document.getElementById('kpiPendingNoCount');
-    const elPendingBadge = document.getElementById('kpiPendingNoBadge');
-    const navBadge = document.getElementById('navReportCountBadge');
-
-    if (elTotal) elTotal.textContent = String(total);
-    if (elScope) elScope.textContent = scopeLabel;
-    if (elQ1Count) elQ1Count.textContent = String(q1Yes);
-    if (elQ1Pct) elQ1Pct.textContent = `${q1Pct}% Yes`;
-    if (elQ1Sub) elQ1Sub.textContent = `${q1Yes} of ${total} confirmed staff contact`;
-    if (elQ2Count) elQ2Count.textContent = String(q2Yes);
-    if (elQ2Pct) elQ2Pct.textContent = `${q2Pct}% Yes`;
-    if (elQ2Sub) elQ2Sub.textContent = `${q2Yes} of ${total} understood & satisfied`;
-    if (elPending) elPending.textContent = String(pendingNo);
-    if (elPendingBadge) {
-      const noPct = total > 0 ? Math.round((pendingNo / total) * 100) : 0;
-      elPendingBadge.textContent = `${pendingNo} No (${noPct}%)`;
-    }
-    if (navBadge) navBadge.textContent = String(state.reports.length);
+    container.querySelectorAll('[data-wf-delete]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-wf-delete');
+        state.clients = state.clients.filter((c) => c.id !== id);
+        if (state.selectedOutboundClientId === id) {
+          state.selectedOutboundClientId = null;
+        }
+        saveState();
+        await tryApiCall(`${API_CONFIG.ENDPOINTS.CLIENTS}/${id}`, { method: 'DELETE' });
+        renderAll();
+        showToast('Client workflow deleted.');
+      });
+    });
   }
 
-  // 4. 3-Step Workflow Script & Intent Trainer View
-  function renderTrainerView() {
-    const wf = getActiveWorkflow();
-    if (!wf) return;
+  // -------------------- PAGE 3: OUTBOUND CALLS --------------------
+  function renderOutboundView() {
+    const gridView = document.getElementById('outboundClientsGridView');
+    const detailView = document.getElementById('outboundClientDetailView');
+    const cardsContainer = document.getElementById('outboundClientCardsContainer');
 
-    const step1 = document.getElementById('step1ScriptInput');
-    const step2 = document.getElementById('step2ScriptInput');
-    const step3 = document.getElementById('step3ScriptInput');
-    const q1Yes = document.getElementById('q1YesKeywords');
-    const q1No = document.getElementById('q1NoKeywords');
-    const q2Yes = document.getElementById('q2YesKeywords');
-    const q2No = document.getElementById('q2NoKeywords');
+    if (!gridView || !detailView || !cardsContainer) return;
 
-    if (step1) step1.value = wf.step1Script || '';
-    if (step2) step2.value = wf.step2Script || '';
-    if (step3) step3.value = wf.step3Script || '';
-    if (q1Yes) q1Yes.value = wf.q1YesKeywords || '';
-    if (q1No) q1No.value = wf.q1NoKeywords || '';
-    if (q2Yes) q2Yes.value = wf.q2YesKeywords || '';
-    if (q2No) q2No.value = wf.q2NoKeywords || '';
+    const selectedClient = getClientById(state.selectedOutboundClientId);
 
-    updateStep1LivePreview();
-    runIntentClassifierSandbox();
-  }
-
-  function updateStep1LivePreview() {
-    const step1 = document.getElementById('step1ScriptInput');
-    const preview = document.getElementById('step1LivePreview');
-    if (!step1 || !preview) return;
-
-    const nameVal = document.getElementById('singleCustomerName')?.value.trim() || '{customer_name}';
-    const itemVal = document.getElementById('singleEnquiryItem')?.value.trim() || '{enquiry_item}';
-
-    const rendered = step1.value
-      .replace(/\{customer_name\}/g, nameVal)
-      .replace(/\{enquiry_item\}/g, itemVal);
-
-    preview.textContent = rendered;
-  }
-
-  function runIntentClassifierSandbox() {
-    const wf = getActiveWorkflow();
-    const inputEl = document.getElementById('intentTestInput');
-    const resultEl = document.getElementById('intentTestResults');
-    if (!wf || !inputEl || !resultEl) return;
-
-    if (!inputEl.value.trim()) {
-      resultEl.innerHTML = `
-        <span>Q1 (Contacted): <strong>—</strong></span>
-        <span>Q2 (Satisfied): <strong>—</strong></span>
-      `;
+    if (!selectedClient) {
+      gridView.classList.remove('hidden');
+      detailView.classList.add('hidden');
+      cardsContainer.innerHTML = buildClientCardsHtml();
+      bindClientCardEvents(cardsContainer);
       return;
     }
 
-    const tempWf = {
-      ...wf,
-      q1YesKeywords: document.getElementById('q1YesKeywords')?.value || wf.q1YesKeywords,
-      q1NoKeywords: document.getElementById('q1NoKeywords')?.value || wf.q1NoKeywords,
-      q2YesKeywords: document.getElementById('q2YesKeywords')?.value || wf.q2YesKeywords,
-      q2NoKeywords: document.getElementById('q2NoKeywords')?.value || wf.q2NoKeywords,
-    };
+    // Show particular client's campaign & leads page
+    gridView.classList.add('hidden');
+    detailView.classList.remove('hidden');
 
-    const { q1, q2 } = evaluateTranscriptIntent(inputEl.value, tempWf);
-    resultEl.innerHTML = `
-      <span>Q1 (Contacted): <span class="${q1 === 'YES' ? 'badge-yes' : 'badge-no'}">${q1}</span></span>
-      <span>Q2 (Satisfied): <span class="${q2 === 'YES' ? 'badge-yes' : 'badge-no'}">${q2}</span></span>
+    document.getElementById('activeClientPageTitle').textContent = `${selectedClient.name} — Outbound Calls & Leads`;
+    document.getElementById('activeClientPageMeta').textContent = `Category: ${selectedClient.industry} | Caller ID: ${selectedClient.callerId} | Workflow Questions: ${(selectedClient.questions || []).length}`;
+
+    const stats = computeClientStats(selectedClient);
+    document.getElementById('tabCountAll').textContent = String(stats.assigned);
+    document.getElementById('tabCountQualified').textContent = String(stats.qualified);
+    document.getElementById('tabCountNotQualified').textContent = String(stats.notQualified);
+    document.getElementById('tabCountNotAttended').textContent = String(stats.notAttended);
+    document.getElementById('clientLiveProgressCount').textContent = `${stats.spoken} / ${stats.assigned} Called`;
+
+    renderClientLeadsTable(selectedClient);
+  }
+
+  function getFilteredClientLeads(client) {
+    const leads = Array.isArray(client.leads) ? client.leads : [];
+    if (state.activeClientLeadTab === 'QUALIFIED') {
+      return leads.filter((l) => l.status === 'QUALIFIED');
+    }
+    if (state.activeClientLeadTab === 'NOT_QUALIFIED') {
+      return leads.filter((l) => l.status === 'NOT_QUALIFIED');
+    }
+    if (state.activeClientLeadTab === 'NOT_ATTENDED') {
+      return leads.filter((l) => l.status === 'NOT_ATTENDED');
+    }
+    return leads;
+  }
+
+  function renderClientLeadsTable(client) {
+    const thead = document.getElementById('clientLeadsThead');
+    const tbody = document.getElementById('clientLeadsTbody');
+    if (!thead || !tbody) return;
+
+    const questions = client.questions || [];
+
+    // Dynamic question columns header
+    const questionThs = questions
+      .map(
+        (q, i) =>
+          `<th title="${escapeHtml(q.text)}">Q${i + 1}: ${escapeHtml(
+            q.text.length > 28 ? q.text.slice(0, 28) + '…' : q.text
+          )}</th>`
+      )
+      .join('');
+
+    thead.innerHTML = `
+      <tr>
+        <th>#</th>
+        <th>Lead Name</th>
+        <th>Phone Number</th>
+        <th>Enquiry / Details</th>
+        ${questionThs}
+        <th>Qualification Status</th>
+        <th>Call Summary</th>
+      </tr>
     `;
-  }
 
-  // 5. Client-Wise Verification Report Table
-  function getFilteredReports() {
-    let list = [...state.reports];
+    const filteredLeads = getFilteredClientLeads(client);
 
-    if (state.activeReportFilter === 'tata-leads') {
-      list = list.filter((r) => r.workflowId === 'tata-leads');
-    } else if (state.activeReportFilter === 'healing-earth') {
-      list = list.filter((r) => r.workflowId === 'healing-earth');
-    } else if (state.activeReportFilter === 'NEEDS_FOLLOWUP') {
-      list = list.filter((r) => r.q1Contacted === 'NO' || r.q2Satisfied === 'NO');
-    }
-
-    if (state.reportSearchQuery.trim()) {
-      const q = state.reportSearchQuery.toLowerCase().trim();
-      list = list.filter(
-        (r) =>
-          r.customerName.toLowerCase().includes(q) ||
-          r.customerPhone.toLowerCase().includes(q) ||
-          r.enquiryItem.toLowerCase().includes(q) ||
-          r.workflowName.toLowerCase().includes(q) ||
-          r.transcript.toLowerCase().includes(q)
-      );
-    }
-
-    return list;
-  }
-
-  function renderReportsTable() {
-    const tbody = document.getElementById('verificationReportTbody');
-    if (!tbody) return;
-
-    const countAll = document.getElementById('countFilterAll');
-    const countTata = document.getElementById('countFilterTata');
-    const countHealing = document.getElementById('countFilterHealing');
-    const countFollowup = document.getElementById('countFilterFollowup');
-
-    if (countAll) countAll.textContent = String(state.reports.length);
-    if (countTata) {
-      countTata.textContent = String(
-        state.reports.filter((r) => r.workflowId === 'tata-leads').length
-      );
-    }
-    if (countHealing) {
-      countHealing.textContent = String(
-        state.reports.filter((r) => r.workflowId === 'healing-earth').length
-      );
-    }
-    if (countFollowup) {
-      countFollowup.textContent = String(
-        state.reports.filter((r) => r.q1Contacted === 'NO' || r.q2Satisfied === 'NO').length
-      );
-    }
-
-    const filtered = getFilteredReports();
-
-    if (filtered.length === 0) {
+    if (filteredLeads.length === 0) {
+      const colSpan = 6 + questions.length;
       tbody.innerHTML = `
         <tr>
-          <td colspan="8" style="text-align:center; padding: 32px; color: #64748b;">
-            No outbound verification calls dialed yet. Use the <strong>Single Number Outbound Dialer</strong> or <strong>Bulk CSV Upload</strong> above to start a campaign.
+          <td colspan="${colSpan}" style="text-align:center; padding: 32px; color: #706b63;">
+            No leads in this tab yet. Upload an Excel / CSV sheet, scan a Google Sheet, or add a lead above.
           </td>
         </tr>
       `;
       return;
     }
 
-    tbody.innerHTML = filtered
-      .map((row) => {
-        const badgeColor = row.workflowBadgeColor || (row.workflowId === 'healing-earth' ? 'emerald' : 'blue');
-        const q1Badge =
-          row.q1Contacted === 'YES'
-            ? '<span class="badge-yes">Yes</span>'
-            : '<span class="badge-no">No</span>';
-        const q2Badge =
-          row.q2Satisfied === 'YES'
-            ? '<span class="badge-yes">Yes</span>'
-            : '<span class="badge-no">No</span>';
+    tbody.innerHTML = filteredLeads
+      .map((lead, idx) => {
+        const isCalling = state.currentlyCallingLeadId === lead.id;
+
+        const qCells = questions
+          .map((q) => {
+            const ans = lead.answers?.[q.id] || '—';
+            if (ans === 'YES') return `<td><span class="badge-yes">YES</span></td>`;
+            if (ans === 'NO') return `<td><span class="badge-no">NO</span></td>`;
+            return `<td><span class="badge-pending">—</span></td>`;
+          })
+          .join('');
+
+        let statusBadge = `<span class="badge-pending">Pending Call</span>`;
+        if (isCalling) {
+          statusBadge = `<span class="badge-warn">Calling Now...</span>`;
+        } else if (lead.status === 'QUALIFIED') {
+          statusBadge = `<span class="badge-yes">Qualified</span>`;
+        } else if (lead.status === 'NOT_QUALIFIED') {
+          statusBadge = `<span class="badge-no">Not Qualified</span>`;
+        } else if (lead.status === 'NOT_ATTENDED') {
+          statusBadge = `<span class="badge-warn">Not Attended</span>`;
+        }
 
         return `
-          <tr>
-            <td class="cell-datetime">${escapeHtml(row.timestamp)}</td>
-            <td>
-              <span class="wf-table-badge ${escapeHtml(badgeColor)}">
-                ${escapeHtml(row.workflowName)}
-              </span>
-            </td>
-            <td class="cell-caller-id">${escapeHtml(row.callerId)}</td>
-            <td>
-              <span class="customer-name-bold">${escapeHtml(row.customerName)}</span>
-              <span class="customer-phone-sub">${escapeHtml(row.customerPhone)}</span>
-            </td>
-            <td><span class="enquiry-pill">${escapeHtml(row.enquiryItem)}</span></td>
-            <td>${q1Badge}</td>
-            <td>${q2Badge}</td>
-            <td class="cell-transcript">${escapeHtml(row.transcript)}</td>
+          <tr class="${isCalling ? 'calling-row' : ''}">
+            <td>${idx + 1}</td>
+            <td><strong>${escapeHtml(lead.name)}</strong></td>
+            <td>${escapeHtml(lead.phone)}</td>
+            <td>${escapeHtml(lead.enquiry || 'General Enquiry')}</td>
+            ${qCells}
+            <td>${statusBadge}</td>
+            <td>${escapeHtml(lead.callSummary || 'Waiting to dial')}</td>
           </tr>
         `;
       })
       .join('');
   }
 
-  // ==================== SINGLE NUMBER OUTBOUND DIALER ====================
-  function buildSimulatedCustomerOutcome(mode, customText, wf, _customerName, enquiryItem) {
-    if (mode === 'custom' && customText.trim()) {
-      const { q1, q2 } = evaluateTranscriptIntent(customText, wf);
-      return {
-        q1Contacted: q1,
-        q2Satisfied: q2,
-        transcript: customText.trim(),
-      };
-    }
-
-    if (mode === 'partial_no') {
-      return {
-        q1Contacted: 'YES',
-        q2Satisfied: 'NO',
-        transcript: `ஆமா கால் பண்ணாங்க, ஆனா ${enquiryItem} விவரங்கள் சரியா புரியல, திருப்தி இல்ல.`,
-      };
-    }
-
-    if (mode === 'full_no') {
-      return {
-        q1Contacted: 'NO',
-        q2Satisfied: 'NO',
-        transcript: `இல்ல, ${enquiryItem} பத்தி எனக்கு இன்னும் யாரும் கால் பண்ணி பேசல.`,
-      };
-    }
-
-    return {
-      q1Contacted: 'YES',
-      q2Satisfied: 'YES',
-      transcript: `ஆமா கால் பண்ணி ${enquiryItem} பத்தி பேசினாங்க. எல்லாமே தெளிவா புரிஞ்சது, ரொம்ப திருப்தி!`,
-    };
-  }
-
-  function setMonitorStep(activeStepIndex) {
-    const pills = document.querySelectorAll('#singleCallSteps .step-pill');
-    pills.forEach((pill) => {
-      const stepNum = Number(pill.getAttribute('data-step'));
-      pill.classList.remove('active', 'done');
-      if (stepNum < activeStepIndex) {
-        pill.classList.add('done');
-      } else if (stepNum === activeStepIndex) {
-        pill.classList.add('active');
-      }
-    });
-  }
-
-  async function handleSingleDialSubmit(e) {
-    e.preventDefault();
-    if (state.isDialingSingle) return;
-
-    const wf = getActiveWorkflow();
-    const customerName = document.getElementById('singleCustomerName').value.trim();
-    const customerPhone = document.getElementById('singlePhoneNumber').value.trim();
-    const enquiryItem = document.getElementById('singleEnquiryItem').value.trim();
-    const callerId = document.getElementById('callerIdSelect').value;
-    const voiceModel = document.getElementById('voiceModelSelect').value;
-    const outcomeMode = document.getElementById('singleSimulatedOutcome').value;
-    const customTranscript = document.getElementById('singleCustomTranscript').value;
-
-    if (!customerName || !customerPhone || !enquiryItem) return;
-
-    state.isDialingSingle = true;
-    const btnDial = document.getElementById('btnDialNow');
-    const statusBadge = document.getElementById('singleCallStatusBadge');
-    const timerEl = document.getElementById('singleCallTimer');
-    const liveFeed = document.getElementById('singleCallLiveFeed');
-
-    if (btnDial) btnDial.disabled = true;
-
-    let seconds = 0;
-    const timerInterval = setInterval(() => {
-      seconds += 1;
-      const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
-      const ss = String(seconds % 60).padStart(2, '0');
-      if (timerEl) timerEl.textContent = `${mm}:${ss}`;
-    }, 1000);
-
-    if (statusBadge) {
-      statusBadge.textContent = 'Dialing...';
-      statusBadge.className = 'console-state dialing';
-    }
-    setMonitorStep(1);
-    if (liveFeed) {
-      liveFeed.innerHTML = `Calling <strong>${escapeHtml(customerName)} (${escapeHtml(customerPhone)})</strong> from ${escapeHtml(callerId)}...`;
-    }
-
-    await new Promise((r) => setTimeout(r, 900));
-
-    const greetingText = wf.step1Script
-      .replace(/\{customer_name\}/g, customerName)
-      .replace(/\{enquiry_item\}/g, enquiryItem);
-
-    if (statusBadge) {
-      statusBadge.textContent = 'Connected · Step 1';
-      statusBadge.className = 'console-state connected';
-    }
-    if (liveFeed) {
-      liveFeed.innerHTML = `<strong>${escapeHtml(wf.shortName)}:</strong> "${escapeHtml(greetingText)}"`;
-    }
-    speakText(greetingText);
-
-    await new Promise((r) => setTimeout(r, 1400));
-
-    setMonitorStep(2);
-    const q1Prompt = wf.step2Script.replace(/\{enquiry_item\}/g, enquiryItem);
-    if (liveFeed) {
-      liveFeed.innerHTML = `<strong>Q1 (Staff Contacted):</strong> "${escapeHtml(q1Prompt)}"`;
-    }
-
-    await new Promise((r) => setTimeout(r, 1200));
-
-    setMonitorStep(3);
-    const simulated = buildSimulatedCustomerOutcome(
-      outcomeMode,
-      customTranscript,
-      wf,
-      customerName,
-      enquiryItem
-    );
-
-    if (liveFeed) {
-      liveFeed.innerHTML = `<strong>${escapeHtml(customerName)}:</strong> "${escapeHtml(simulated.transcript)}"`;
-    }
-
-    await new Promise((r) => setTimeout(r, 1100));
-
-    setMonitorStep(4);
-    const newRecord = {
-      id: `REP-${Date.now()}`,
-      timestamp: formatCurrentTimestamp(),
-      workflowId: wf.id,
-      workflowName: wf.name,
-      workflowBadgeColor: wf.badgeColor || 'blue',
-      callerId,
-      voiceModel,
-      customerName,
-      customerPhone,
-      enquiryItem,
-      q1Contacted: simulated.q1Contacted,
-      q2Satisfied: simulated.q2Satisfied,
-      transcript: simulated.transcript,
-    };
-
-    const apiRes = await apiRequest('/api/calls/single', {
-      method: 'POST',
-      body: JSON.stringify(newRecord),
-    });
-
-    if (apiRes.ok && apiRes.data?.report) {
-      state.reports.unshift(apiRes.data.report);
-    } else {
-      state.reports.unshift(newRecord);
-    }
-
-    saveLocalState();
-    renderAll();
-
-    clearInterval(timerInterval);
-    if (statusBadge) {
-      statusBadge.textContent = `Completed (Q1: ${newRecord.q1Contacted} · Q2: ${newRecord.q2Satisfied})`;
-    }
-    if (liveFeed) {
-      liveFeed.innerHTML = `Call logged for <strong>${escapeHtml(customerName)}</strong> — Q1: <strong>${newRecord.q1Contacted}</strong>, Q2: <strong>${newRecord.q2Satisfied}</strong>.`;
-    }
-
-    showToast(`Outbound call to ${customerName} completed & logged!`);
-    state.isDialingSingle = false;
-    if (btnDial) btnDial.disabled = false;
-  }
-
-  // ==================== BULK CSV PARSER & BULK CAMPAIGN ====================
-  function parseCsvText(csvText) {
-    const lines = String(csvText || '')
+  // -------------------- EXCEL / CSV & GOOGLE SHEET LEAD PARSER --------------------
+  function parseRowsIntoLeads(rawText) {
+    const lines = String(rawText || '')
       .split(/\r?\n/)
       .map((l) => l.trim())
       .filter(Boolean);
 
     if (lines.length === 0) return [];
 
-    const results = [];
+    const parsed = [];
+    const modes = ['qualified', 'qualified', 'not_qualified', 'not_attended'];
+
     for (let i = 0; i < lines.length; i++) {
-      const cols = lines[i].split(',').map((c) => c.replace(/^["']|["']$/g, '').trim());
+      // Support both comma-separated (.csv) and tab-separated (copied from Excel / Google Sheets)
+      const delimiter = lines[i].includes('\t') ? '\t' : ',';
+      const cols = lines[i]
+        .split(delimiter)
+        .map((c) => c.replace(/^["']|["']$/g, '').trim());
+
       if (cols.length < 2) continue;
 
       if (
@@ -808,465 +687,816 @@
 
       if (!cols[0] && !cols[1]) continue;
 
-      results.push({
-        customerName: cols[0],
-        customerPhone: cols[1],
-        enquiryItem: cols[2] || 'Enquiry',
+      parsed.push({
+        id: `LEAD-${Date.now()}-${i}-${Math.floor(Math.random() * 1000)}`,
+        name: cols[0] || `Lead ${i + 1}`,
+        phone: cols[1] || '',
+        enquiry: cols[2] || 'Enquiry',
+        simMode: modes[i % modes.length],
+        status: 'PENDING',
+        answers: {},
+        callSummary: '',
+        calledAt: '',
       });
     }
-    return results;
+    return parsed;
   }
 
-  function renderBulkQueuePreview() {
-    const countEl = document.getElementById('bulkLeadCount');
-    const listEl = document.getElementById('bulkPreviewList');
-    if (countEl) countEl.textContent = String(state.bulkQueue.length);
-    if (!listEl) return;
+  async function handleScanGoogleSheet() {
+    const client = getClientById(state.selectedOutboundClientId);
+    const inputEl = document.getElementById('googleSheetUrlInput');
+    if (!client || !inputEl) return;
 
-    if (state.bulkQueue.length === 0) {
-      listEl.innerHTML = `<div class="empty-preview-msg">No CSV file uploaded. Drag &amp; drop a CSV file above to load leads.</div>`;
+    const rawVal = inputEl.value.trim();
+    if (!rawVal) {
+      showToast('Please paste a Google Sheet link or copied rows first.');
       return;
     }
 
-    listEl.innerHTML = state.bulkQueue
+    // Case 1: User pasted multi-line or comma/tab rows directly
+    if (rawVal.includes('\n') || (!rawVal.startsWith('http') && rawVal.includes(','))) {
+      const leads = parseRowsIntoLeads(rawVal);
+      if (leads.length > 0) {
+        client.leads.push(...leads);
+        saveState();
+        renderAll();
+        inputEl.value = '';
+        showToast(`Scanned and added ${leads.length} leads to ${client.name}!`);
+        return;
+      }
+    }
+
+    // Case 2: Google Sheet URL — extract spreadsheet ID and fetch CSV export
+    const match = rawVal.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (match && match[1]) {
+      const sheetId = match[1];
+      const csvExportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
+      showToast('Scanning Google Sheet...');
+
+      try {
+        const res = await fetch(csvExportUrl);
+        if (res.ok) {
+          const csvText = await res.text();
+          const leads = parseRowsIntoLeads(csvText);
+          if (leads.length > 0) {
+            client.leads.push(...leads);
+            saveState();
+            await tryApiCall(API_CONFIG.ENDPOINTS.CLIENT_LEADS(client.id), {
+              method: 'POST',
+              body: JSON.stringify({ leads }),
+            });
+            renderAll();
+            inputEl.value = '';
+            showToast(`Scanned ${leads.length} leads from Google Sheet!`);
+            return;
+          }
+        }
+      } catch (_err) {
+        // Fallback if Google Sheet is private / CORS restricted in browser
+      }
+
+      showToast(
+        'Note: Make sure the Google Sheet is set to "Anyone with the link can view", or copy & paste the rows directly into the box.'
+      );
+      return;
+    }
+
+    showToast('Please enter a valid Google Sheet link or "Name, Phone, Enquiry" rows.');
+  }
+
+  // -------------------- START & STOP SEQUENTIAL VOICE AGENT CALLER --------------------
+  function speakUtterance(text) {
+    const chk = document.getElementById('chkLiveTts');
+    if (!chk || !chk.checked || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.rate = 1.0;
+      window.speechSynthesis.speak(utter);
+    } catch (_e) {
+      // ignore browser TTS errors
+    }
+  }
+
+  async function startClientOutboundCalling() {
+    if (state.isCallingActive) return;
+    const client = getClientById(state.selectedOutboundClientId);
+    if (!client) return;
+
+    const pendingLeads = (client.leads || []).filter((l) => l.status === 'PENDING');
+    if (pendingLeads.length === 0) {
+      showToast('No pending leads to call. Upload leads first.');
+      return;
+    }
+
+    state.isCallingActive = true;
+    state.stopAfterCurrentCall = false;
+
+    const btnStart = document.getElementById('btnStartClientCalling');
+    const btnStop = document.getElementById('btnStopClientCalling');
+    const liveBadge = document.getElementById('clientLiveStateBadge');
+    const liveMsg = document.getElementById('clientLiveCallMessage');
+    const topAgentStatus = document.getElementById('topbarAgentStatus');
+
+    if (btnStart) btnStart.disabled = true;
+    if (btnStop) btnStop.disabled = false;
+    if (topAgentStatus) topAgentStatus.textContent = `Calling (${client.name})`;
+
+    for (let i = 0; i < pendingLeads.length; i++) {
+      const lead = pendingLeads[i];
+      state.currentlyCallingLeadId = lead.id;
+      renderOutboundView();
+
+      if (liveBadge) liveBadge.textContent = `Calling Lead ${i + 1} of ${pendingLeads.length}`;
+      const greeting = (client.openingGreeting || '')
+        .replace(/\{lead_name\}/g, lead.name)
+        .replace(/\{customer_name\}/g, lead.name)
+        .replace(/\{client_name\}/g, client.name)
+        .replace(/\{enquiry_item\}/g, lead.enquiry || 'your enquiry');
+
+      if (liveMsg) {
+        liveMsg.innerHTML = `Dialing <strong>${escapeHtml(lead.name)} (${escapeHtml(lead.phone)})</strong> — Speaking Greeting: "${escapeHtml(greeting)}"`;
+      }
+      speakUtterance(greeting);
+
+      await new Promise((r) => setTimeout(r, 1100));
+
+      // Check simulated response mode for this lead
+      if (lead.simMode === 'not_attended') {
+        lead.status = 'NOT_ATTENDED';
+        lead.answers = {};
+        (client.questions || []).forEach((q) => {
+          lead.answers[q.id] = '—';
+        });
+        lead.callSummary = 'Call Not Attended — Customer did not pick up / phone ringing no answer.';
+        lead.calledAt = formatNow();
+      } else {
+        // Ask each configured workflow question sequentially
+        const isPositiveLead = lead.simMode !== 'not_qualified';
+        lead.answers = {};
+
+        for (let qIdx = 0; qIdx < (client.questions || []).length; qIdx++) {
+          const q = client.questions[qIdx];
+          if (liveMsg) {
+            liveMsg.innerHTML = `Asking <strong>${escapeHtml(lead.name)}</strong> — Q${qIdx + 1}: "${escapeHtml(q.text)}"`;
+          }
+          await new Promise((r) => setTimeout(r, 900));
+          lead.answers[q.id] = isPositiveLead ? 'YES' : 'NO';
+        }
+
+        if (isPositiveLead) {
+          lead.status = 'QUALIFIED';
+          lead.callSummary = `Customer answered YES to all ${client.questions.length} questions. Interested and satisfied regarding ${lead.enquiry}.`;
+        } else {
+          lead.status = 'NOT_QUALIFIED';
+          lead.callSummary = `Customer responded NO / Not Interested regarding ${lead.enquiry}. Marked as Not Qualified.`;
+        }
+        lead.calledAt = formatNow();
+      }
+
+      await tryApiCall(API_CONFIG.ENDPOINTS.CALL_RESULT(client.id, lead.id), {
+        method: 'POST',
+        body: JSON.stringify(lead),
+      });
+
+      state.currentlyCallingLeadId = null;
+      saveState();
+      renderAll();
+
+      // If user clicked "Stop After Current Call", break cleanly right after finishing this call!
+      if (state.stopAfterCurrentCall) {
+        if (liveBadge) liveBadge.textContent = 'Stopped by User';
+        if (liveMsg) {
+          liveMsg.innerHTML = `Stopped cleanly after finishing call with <strong>${escapeHtml(lead.name)}</strong>.`;
+        }
+        showToast('Voice agent stopped after finishing the current call.');
+        break;
+      }
+    }
+
+    if (!state.stopAfterCurrentCall) {
+      if (liveBadge) liveBadge.textContent = 'Campaign Completed';
+      if (liveMsg) {
+        liveMsg.innerHTML = `Finished calling all pending leads for <strong>${escapeHtml(client.name)}</strong>.`;
+      }
+      showToast(`Completed outbound calls for ${client.name}!`);
+    }
+
+    state.isCallingActive = false;
+    state.stopAfterCurrentCall = false;
+    state.currentlyCallingLeadId = null;
+    if (btnStart) btnStart.disabled = false;
+    if (btnStop) btnStop.disabled = true;
+    if (topAgentStatus) topAgentStatus.textContent = 'Idle / Ready';
+    renderAll();
+  }
+
+  function requestStopAfterCurrentCall() {
+    if (!state.isCallingActive) return;
+    state.stopAfterCurrentCall = true;
+    const liveBadge = document.getElementById('clientLiveStateBadge');
+    const btnStop = document.getElementById('btnStopClientCalling');
+    if (liveBadge) liveBadge.textContent = 'Stopping After Current Call...';
+    if (btnStop) btnStop.disabled = true;
+    showToast('Will stop automatically once the current call finishes.');
+  }
+
+  // -------------------- PAGE 4: WORKFLOW SCRIPT TRAINER --------------------
+  function renderTrainerView() {
+    const selectEl = document.getElementById('trainerClientSelect');
+    if (!selectEl) return;
+
+    const currentVal = selectEl.value || state.clients[0]?.id;
+    selectEl.innerHTML = state.clients
       .map(
-        (item, idx) => `
-        <div class="preview-lead-row">
-          <span class="preview-lead-name">${idx + 1}. ${escapeHtml(item.customerName)}</span>
-          <span class="preview-lead-phone">${escapeHtml(item.customerPhone)}</span>
-          <span class="preview-lead-item">${escapeHtml(item.enquiryItem)}</span>
-        </div>
-      `
+        (c) =>
+          `<option value="${escapeHtml(c.id)}" ${
+            c.id === currentVal ? 'selected' : ''
+          }>${escapeHtml(c.name)} (${escapeHtml(c.industry)})</option>`
       )
       .join('');
+
+    const client = getClientById(selectEl.value) || state.clients[0];
+    if (!client) return;
+
+    const trainer = client.trainer || {};
+    document.getElementById('trainerPersonaInput').value = trainer.persona || '';
+    document.getElementById('trainerWhatToSpeak').value = trainer.whatToSpeak || '';
+    document.getElementById('trainerForbiddenPhrases').value = trainer.forbiddenPhrases || '';
+    document.getElementById('trainerWhatNotToSpeak').value = trainer.whatNotToSpeak || '';
+    document.getElementById('trainerPositiveKeywords').value = trainer.positiveKeywords || '';
+    document.getElementById('trainerNegativeKeywords').value = trainer.negativeKeywords || '';
+
+    const previewList = document.getElementById('trainerQuestionsPreviewList');
+    if (previewList) {
+      previewList.innerHTML = (client.questions || [])
+        .map(
+          (q, idx) => `
+          <div class="question-item-row">
+            <div><span class="question-badge">Step Q${idx + 1}</span></div>
+            <div>${escapeHtml(q.text)}</div>
+          </div>
+        `
+        )
+        .join('');
+    }
   }
 
-  async function runBulkOutboundCampaign() {
-    if (state.isRunningBulk) return;
-    if (state.bulkQueue.length === 0) {
-      showToast('Please upload a CSV file with leads before starting a bulk campaign.');
-      return;
+  // -------------------- PAGE 5: VERIFICATION REPORT --------------------
+  function renderReportsView() {
+    const clientSelect = document.getElementById('reportClientFilterSelect');
+    if (clientSelect) {
+      const prev = state.activeReportClientFilter;
+      clientSelect.innerHTML =
+        `<option value="ALL">All Clients</option>` +
+        state.clients
+          .map(
+            (c) =>
+              `<option value="${escapeHtml(c.id)}" ${
+                c.id === prev ? 'selected' : ''
+              }>${escapeHtml(c.name)}</option>`
+          )
+          .join('');
     }
 
-    const wf = getActiveWorkflow();
-    const callerId = document.getElementById('callerIdSelect').value;
-    const voiceModel = document.getElementById('voiceModelSelect').value;
-    const btnStart = document.getElementById('btnStartBulkCampaign');
-    const statusText = document.getElementById('bulkProgressStatusText');
-    const statsText = document.getElementById('bulkProgressStatsText');
-    const fillBar = document.getElementById('bulkProgressBarFill');
+    const stats = computeGlobalStats(state.activeReportClientFilter);
+    document.getElementById('repTotalAssigned').textContent = String(stats.assigned);
+    document.getElementById('repTotalSpoken').textContent = String(stats.spoken);
+    document.getElementById('repTotalPending').textContent = String(stats.pending);
+    document.getElementById('repTotalQualified').textContent = String(stats.qualified);
+    document.getElementById('repTotalNotQualified').textContent = String(stats.notQualified);
+    document.getElementById('repTotalNotAttended').textContent = String(stats.notAttended);
 
-    state.isRunningBulk = true;
-    if (btnStart) btnStart.disabled = true;
+    // Client-wise breakdown table
+    const summaryTbody = document.getElementById('reportClientSummaryTbody');
+    if (summaryTbody) {
+      summaryTbody.innerHTML = state.clients
+        .map((c) => {
+          const s = computeClientStats(c);
+          return `
+            <tr>
+              <td><strong>${escapeHtml(c.name)}</strong></td>
+              <td>${escapeHtml(c.callerId)}</td>
+              <td><strong>${s.assigned}</strong></td>
+              <td><strong>${s.spoken}</strong></td>
+              <td>${s.pending}</td>
+              <td><span class="badge-yes">${s.qualified}</span></td>
+              <td><span class="badge-no">${s.notQualified}</span></td>
+              <td><span class="badge-warn">${s.notAttended}</span></td>
+              <td>
+                <button type="button" class="btn-ghost btn-xs" data-export-client-id="${escapeHtml(c.id)}">
+                  Download Excel/CSV
+                </button>
+              </td>
+            </tr>
+          `;
+        })
+        .join('');
 
-    const total = state.bulkQueue.length;
-    const generatedReports = [];
-
-    for (let i = 0; i < total; i++) {
-      const lead = state.bulkQueue[i];
-      const pct = Math.round(((i + 1) / total) * 100);
-
-      if (statusText) {
-        statusText.textContent = `Dialing (${i + 1}/${total}): ${lead.customerName} (${lead.customerPhone})...`;
-      }
-      if (statsText) {
-        statsText.textContent = `${i} / ${total} Dialed (${Math.round((i / total) * 100)}%)`;
-      }
-
-      await new Promise((r) => setTimeout(r, 650));
-
-      const record = {
-        id: `REP-${Date.now()}-${i}`,
-        timestamp: formatCurrentTimestamp(),
-        workflowId: wf.id,
-        workflowName: wf.name,
-        workflowBadgeColor: wf.badgeColor || 'blue',
-        callerId,
-        voiceModel,
-        customerName: lead.customerName,
-        customerPhone: lead.customerPhone,
-        enquiryItem: lead.enquiryItem,
-        q1Contacted: 'YES',
-        q2Satisfied: 'YES',
-        transcript: `ஆமா கால் பண்ணி ${lead.enquiryItem} பத்தி பேசினாங்க, எல்லாமே புரிஞ்சது திருப்தி.`,
-      };
-
-      generatedReports.push(record);
-      state.reports.unshift(record);
-
-      if (fillBar) fillBar.style.width = `${pct}%`;
-      if (statsText) statsText.textContent = `${i + 1} / ${total} Dialed (${pct}%)`;
-
-      renderAll();
-    }
-
-    await apiRequest('/api/calls/bulk', {
-      method: 'POST',
-      body: JSON.stringify({
-        workflowId: wf.id,
-        callerId,
-        voiceModel,
-        records: generatedReports,
-      }),
-    });
-
-    saveLocalState();
-    if (statusText) {
-      statusText.textContent = `Batch Outbound Campaign Completed (${total} calls verified)`;
-    }
-    showToast(`Bulk Campaign Finished: ${total} outbound verification calls logged!`);
-
-    state.bulkQueue = [];
-    renderBulkQueuePreview();
-    state.isRunningBulk = false;
-    if (btnStart) btnStart.disabled = false;
-  }
-
-  // ==================== SAVE WORKFLOW CONFIGURATION (TRAINER) ====================
-  async function handleSaveWorkflowConfig() {
-    const wf = getActiveWorkflow();
-    if (!wf) return;
-
-    wf.step1Script = document.getElementById('step1ScriptInput').value.trim();
-    wf.step2Script = document.getElementById('step2ScriptInput').value.trim();
-    wf.step3Script = document.getElementById('step3ScriptInput').value.trim();
-    wf.q1YesKeywords = document.getElementById('q1YesKeywords').value.trim();
-    wf.q1NoKeywords = document.getElementById('q1NoKeywords').value.trim();
-    wf.q2YesKeywords = document.getElementById('q2YesKeywords').value.trim();
-    wf.q2NoKeywords = document.getElementById('q2NoKeywords').value.trim();
-
-    await apiRequest('/api/workflows', {
-      method: 'POST',
-      body: JSON.stringify({ workflow: wf }),
-    });
-
-    saveLocalState();
-    renderAll();
-    showToast(`Saved 3-step script & keyword configuration for "${wf.shortName}"!`);
-  }
-
-  // ==================== "+ ADD NEW WORKFLOW" MODAL ====================
-  async function handleCreateNewWorkflow(e) {
-    e.preventDefault();
-    const name = document.getElementById('newWfName').value.trim();
-    const shortName = document.getElementById('newWfShortName').value.trim();
-    const callerId = document.getElementById('newWfCallerId').value;
-    const badgeColor = document.getElementById('newWfBadgeColor').value;
-    const step1Script = document.getElementById('newWfStep1').value.trim();
-    const step2Script = document.getElementById('newWfStep2').value.trim();
-    const step3Script = document.getElementById('newWfStep3').value.trim();
-
-    if (!name || !shortName) return;
-
-    const id =
-      shortName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '') +
-      '-' +
-      Math.floor(100 + Math.random() * 900);
-
-    const newWf = {
-      id,
-      name,
-      shortName,
-      subtitle: 'Custom Outbound Verification',
-      description: `Automated outbound verification calls for ${name}.`,
-      callerId,
-      voiceModel: 'Tamil Female (Pallavi HD)',
-      badgeColor,
-      itemLabel: 'Vehicle / Service Name',
-      step1Script,
-      step2Script,
-      q1YesKeywords: DEFAULT_WORKFLOWS[0].q1YesKeywords,
-      q1NoKeywords: DEFAULT_WORKFLOWS[0].q1NoKeywords,
-      step3Script,
-      q2YesKeywords: DEFAULT_WORKFLOWS[0].q2YesKeywords,
-      q2NoKeywords: DEFAULT_WORKFLOWS[0].q2NoKeywords,
-    };
-
-    state.workflows.push(newWf);
-    state.activeWorkflowId = newWf.id;
-
-    await apiRequest('/api/workflows', {
-      method: 'POST',
-      body: JSON.stringify({ workflow: newWf }),
-    });
-
-    saveLocalState();
-    closeNewWorkflowModal();
-    selectWorkflow(newWf.id);
-    showToast(`Created and activated new workflow: "${newWf.name}"`);
-  }
-
-  function openNewWorkflowModal() {
-    document.getElementById('newWorkflowModalBackdrop')?.classList.remove('hidden');
-  }
-
-  function closeNewWorkflowModal() {
-    document.getElementById('newWorkflowModalBackdrop')?.classList.add('hidden');
-    document.getElementById('newWorkflowForm')?.reset();
-  }
-
-  // ==================== EXPORT CSV / EXCEL ====================
-  function exportReportsToCsv() {
-    const rows = getFilteredReports();
-    if (rows.length === 0) {
-      showToast('No verification report records to export yet.');
-      return;
-    }
-    const headers = [
-      'Date & Time',
-      'Workflow Name',
-      'Dialed From Number',
-      'Customer Name',
-      'Customer Phone',
-      'Enquiry Item (Vehicle / Service)',
-      'Q1: Staff Contacted',
-      'Q2: Understood & Satisfied',
-      'Customer Spoken Transcript / Remark',
-    ];
-
-    const escapeCsvField = (val) => {
-      const str = String(val ?? '').replace(/"/g, '""');
-      return `"${str}"`;
-    };
-
-    const csvLines = [
-      headers.map(escapeCsvField).join(','),
-      ...rows.map((r) =>
-        [
-          r.timestamp,
-          r.workflowName,
-          r.callerId,
-          r.customerName,
-          r.customerPhone,
-          r.enquiryItem,
-          r.q1Contacted,
-          r.q2Satisfied,
-          r.transcript,
-        ]
-          .map(escapeCsvField)
-          .join(',')
-      ),
-    ];
-
-    const blob = new Blob(['\uFEFF' + csvLines.join('\r\n')], {
-      type: 'text/csv;charset=utf-8;',
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Reach_AI_Voice_Verification_Report_${state.activeReportFilter}_${new Date()
-      .toISOString()
-      .slice(0, 10)}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    showToast(`Exported ${rows.length} verification records to CSV / Excel!`);
-  }
-
-  function downloadSampleTemplateCsv() {
-    const wf = getActiveWorkflow();
-    const headerOnly = ['Name,Phone,Vehicle/Service'];
-
-    const blob = new Blob(['\uFEFF' + headerOnly.join('\r\n') + '\r\n'], {
-      type: 'text/csv;charset=utf-8;',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${wf.id}_outbound_leads_template.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  // ==================== EVENT LISTENERS SETUP ====================
-  function bindEvents() {
-    document.querySelectorAll('#mainNavTabs .nav-tab').forEach((tab) => {
-      tab.addEventListener('click', () => {
-        const view = tab.getAttribute('data-view');
-        if (!view) return;
-        state.activeView = view;
-
-        document.querySelectorAll('#mainNavTabs .nav-tab').forEach((t) =>
-          t.classList.toggle('active', t === tab)
-        );
-        document.querySelectorAll('.view-section').forEach((sec) => {
-          sec.classList.toggle('active', sec.id === `view-${view}`);
+      summaryTbody.querySelectorAll('[data-export-client-id]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const c = getClientById(btn.getAttribute('data-export-client-id'));
+          if (c) exportClientLeadsToCsv(c, 'ALL');
         });
+      });
+    }
 
-        const reportsSec = document.getElementById('reportsContainerSection');
-        if (reportsSec) {
-          reportsSec.style.display = view === 'settings' ? 'none' : 'block';
-          if (view === 'reports') {
-            reportsSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Detailed Call Verification Logs
+    const logsTbody = document.getElementById('reportDetailedLogsTbody');
+    if (!logsTbody) return;
+
+    const targetClients =
+      state.activeReportClientFilter === 'ALL'
+        ? state.clients
+        : state.clients.filter((c) => c.id === state.activeReportClientFilter);
+
+    const allCalledLeads = [];
+    targetClients.forEach((client) => {
+      (client.leads || []).forEach((lead) => {
+        if (lead.status !== 'PENDING') {
+          if (
+            state.activeReportStatusFilter === 'ALL' ||
+            lead.status === state.activeReportStatusFilter
+          ) {
+            allCalledLeads.push({ client, lead });
           }
         }
       });
     });
 
-    document.getElementById('workflowSelect')?.addEventListener('change', (e) => {
-      selectWorkflow(e.target.value);
+    if (allCalledLeads.length === 0) {
+      logsTbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align:center; padding: 28px; color: #706b63;">
+            No calls spoken yet for the selected filter. Start calling leads from the Outbound Calls page.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    logsTbody.innerHTML = allCalledLeads
+      .map(({ client, lead }) => {
+        const qSummary = (client.questions || [])
+          .map((q, i) => `Q${i + 1}: ${lead.answers?.[q.id] || '—'}`)
+          .join(' | ');
+
+        let statusBadge = `<span class="badge-yes">Qualified</span>`;
+        if (lead.status === 'NOT_QUALIFIED') {
+          statusBadge = `<span class="badge-no">Not Qualified</span>`;
+        } else if (lead.status === 'NOT_ATTENDED') {
+          statusBadge = `<span class="badge-warn">Not Attended</span>`;
+        }
+
+        return `
+          <tr>
+            <td>${escapeHtml(lead.calledAt || '—')}</td>
+            <td><strong>${escapeHtml(client.name)}</strong></td>
+            <td><strong>${escapeHtml(lead.name)}</strong><br/><span style="font-size:13px;color:#706b63;">${escapeHtml(lead.phone)}</span></td>
+            <td>${escapeHtml(lead.enquiry)}</td>
+            <td>${escapeHtml(qSummary)}</td>
+            <td>${statusBadge}</td>
+            <td>${escapeHtml(lead.callSummary)}</td>
+          </tr>
+        `;
+      })
+      .join('');
+  }
+
+  // ==================== EXCEL / CSV DOWNLOAD HELPERS ====================
+  function exportClientLeadsToCsv(client, filterTab = 'ALL') {
+    let leads = Array.isArray(client.leads) ? client.leads : [];
+    if (filterTab === 'QUALIFIED') {
+      leads = leads.filter((l) => l.status === 'QUALIFIED');
+    } else if (filterTab === 'NOT_QUALIFIED') {
+      leads = leads.filter((l) => l.status === 'NOT_QUALIFIED');
+    } else if (filterTab === 'NOT_ATTENDED') {
+      leads = leads.filter((l) => l.status === 'NOT_ATTENDED');
+    }
+
+    if (leads.length === 0) {
+      showToast('No leads in this view to export.');
+      return;
+    }
+
+    const questions = client.questions || [];
+    const headers = [
+      'Client Name',
+      'Lead Name',
+      'Phone Number',
+      'Enquiry / Details',
+      ...questions.map((q, i) => `Q${i + 1}: ${q.text}`),
+      'Qualification Status',
+      'Call Summary',
+      'Called Date & Time',
+    ];
+
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
+    const lines = [
+      headers.map(esc).join(','),
+      ...leads.map((l) =>
+        [
+          client.name,
+          l.name,
+          l.phone,
+          l.enquiry,
+          ...questions.map((q) => l.answers?.[q.id] || '—'),
+          l.status,
+          l.callSummary || '',
+          l.calledAt || '',
+        ]
+          .map(esc)
+          .join(',')
+      ),
+    ];
+
+    const blob = new Blob(['\uFEFF' + lines.join('\r\n')], {
+      type: 'text/csv;charset=utf-8;',
     });
-    document.getElementById('trainerWorkflowSelect')?.addEventListener('change', (e) => {
-      selectWorkflow(e.target.value);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${client.name.replace(/\s+/g, '_')}_${filterTab}_Leads.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast(`Downloaded ${leads.length} leads (${filterTab}) as Excel/CSV!`);
+  }
+
+  function exportOverallVerificationReportCsv() {
+    const headers = [
+      'Client Name',
+      'Caller ID',
+      'Leads Assigned',
+      'Calls Spoken',
+      'Pending Calls',
+      'Qualified Leads',
+      'Not Qualified Leads',
+      'Not Attended Calls',
+    ];
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const lines = [
+      headers.map(esc).join(','),
+      ...state.clients.map((c) => {
+        const s = computeClientStats(c);
+        return [
+          c.name,
+          c.callerId,
+          s.assigned,
+          s.spoken,
+          s.pending,
+          s.qualified,
+          s.notQualified,
+          s.notAttended,
+        ]
+          .map(esc)
+          .join(',');
+      }),
+    ];
+
+    const blob = new Blob(['\uFEFF' + lines.join('\r\n')], {
+      type: 'text/csv;charset=utf-8;',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Reach_AI_Voice_Verification_Report.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('Exported Verification Report to Excel / CSV!');
+  }
+
+  // ==================== EVENT BINDINGS ====================
+  function bindEvents() {
+    // Sidebar navigation
+    document.querySelectorAll('#mainNavTabs .nav-tab').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const v = btn.getAttribute('data-view');
+        if (v === 'outbound') state.selectedOutboundClientId = null;
+        if (v) switchView(v);
+      });
     });
 
-    document.getElementById('callerIdSelect')?.addEventListener('change', () => {
-      renderTopbar();
+    // Topbar & Dashboard Quick Add Client buttons
+    document.getElementById('btnQuickAddClientTop')?.addEventListener('click', () => {
+      resetWorkflowEditorToNew();
+      switchView('workflows');
+    });
+    document.getElementById('btnDashGoToAddClient')?.addEventListener('click', () => {
+      resetWorkflowEditorToNew();
+      switchView('workflows');
+    });
+    document
+      .getElementById('btnResetWorkflowForm')
+      ?.addEventListener('click', resetWorkflowEditorToNew);
+
+    // Add Question Row in Client Workflow Form
+    document.getElementById('btnAddQuestionRow')?.addEventListener('click', () => {
+      const nextNum = state.editingQuestionsDraft.length + 1;
+      state.editingQuestionsDraft.push({
+        id: `q${Date.now()}_${nextNum}`,
+        text: '',
+      });
+      renderQuestionsBuilderRows();
     });
 
-    document.getElementById('singleSimulatedOutcome')?.addEventListener('change', (e) => {
-      const group = document.getElementById('customTranscriptGroup');
-      if (group) {
-        group.classList.toggle('hidden', e.target.value !== 'custom');
-      }
+    // Save Client Workflow Form
+    document
+      .getElementById('clientWorkflowForm')
+      ?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const existingId = document.getElementById('wfClientId').value.trim();
+        const name = document.getElementById('wfClientName').value.trim();
+        const industry = document.getElementById('wfIndustry').value.trim();
+        const callerId = document.getElementById('wfCallerId').value.trim();
+        const voiceLanguage = document.getElementById('wfVoiceLanguage').value;
+        const openingGreeting = document
+          .getElementById('wfOpeningGreeting')
+          .value.trim();
+
+        const cleanedQuestions = state.editingQuestionsDraft
+          .map((q, i) => ({
+            id: q.id || `q${i + 1}`,
+            text: String(q.text || '').trim(),
+          }))
+          .filter((q) => q.text.length > 0);
+
+        if (!name || cleanedQuestions.length === 0) {
+          showToast('Please enter client name and at least one question.');
+          return;
+        }
+
+        if (existingId) {
+          const client = getClientById(existingId);
+          if (client) {
+            client.name = name;
+            client.industry = industry;
+            client.callerId = callerId;
+            client.voiceLanguage = voiceLanguage;
+            client.openingGreeting = openingGreeting;
+            client.questions = cleanedQuestions;
+            await tryApiCall(`${API_CONFIG.ENDPOINTS.CLIENTS}/${existingId}`, {
+              method: 'PUT',
+              body: JSON.stringify(client),
+            });
+            showToast(`Updated workflow for "${name}"!`);
+          }
+        } else {
+          const newClient = {
+            id: `client-${Date.now()}`,
+            name,
+            industry,
+            callerId,
+            voiceLanguage,
+            openingGreeting,
+            questions: cleanedQuestions,
+            trainer: {
+              persona: `Polite, helpful verification agent for ${name}`,
+              whatToSpeak: `- Greet the customer and verify their ${industry} enquiry\n- Ask all ${cleanedQuestions.length} workflow questions clearly`,
+              forbiddenPhrases: '',
+              whatNotToSpeak: '- Do not make unverified promises',
+              positiveKeywords:
+                'ஆமா, ஆமாம், பேசினாங்க, புரிஞ்சது, திருப்தி, aama, yes, interested, satisfied',
+              negativeKeywords:
+                'இல்ல, இல்லை, பேசல, வேண்டாம், illa, no, not interested',
+            },
+            leads: [],
+          };
+          state.clients.push(newClient);
+          await tryApiCall(API_CONFIG.ENDPOINTS.CLIENTS, {
+            method: 'POST',
+            body: JSON.stringify(newClient),
+          });
+          showToast(`Created new client workflow: "${name}"!`);
+          resetWorkflowEditorToNew();
+        }
+
+        saveState();
+        renderAll();
+      });
+
+    // Outbound Calls Detail Page buttons
+    document.getElementById('btnBackToClientCards')?.addEventListener('click', () => {
+      state.selectedOutboundClientId = null;
+      renderOutboundView();
     });
 
     document
-      .getElementById('singleDialForm')
-      ?.addEventListener('submit', handleSingleDialSubmit);
+      .getElementById('btnEditThisClientWorkflow')
+      ?.addEventListener('click', () => {
+        if (state.selectedOutboundClientId) {
+          loadClientIntoWorkflowEditor(state.selectedOutboundClientId);
+        }
+      });
 
-    const dropzone = document.getElementById('csvDropzone');
-    const fileInput = document.getElementById('csvFileInput');
-
+    // Excel / CSV File Upload Dropzone
+    const dropzone = document.getElementById('clientLeadDropzone');
+    const fileInput = document.getElementById('clientLeadFileInput');
     if (dropzone && fileInput) {
       dropzone.addEventListener('click', () => fileInput.click());
-      dropzone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropzone.classList.add('dragover');
-      });
-      dropzone.addEventListener('dragleave', () => {
-        dropzone.classList.remove('dragover');
-      });
+      dropzone.addEventListener('dragover', (e) => e.preventDefault());
       dropzone.addEventListener('drop', (e) => {
         e.preventDefault();
-        dropzone.classList.remove('dragover');
         const file = e.dataTransfer?.files?.[0];
-        if (file) readCsvFile(file);
+        if (file) handleLeadFileUpload(file);
       });
       fileInput.addEventListener('change', (e) => {
         const file = e.target.files?.[0];
-        if (file) readCsvFile(file);
+        if (file) handleLeadFileUpload(file);
+        fileInput.value = '';
       });
     }
 
+    // Download Blank CSV Template
     document
-      .getElementById('btnDownloadTemplateCsv')
-      ?.addEventListener('click', downloadSampleTemplateCsv);
-    document.getElementById('btnClearBulkQueue')?.addEventListener('click', () => {
-      state.bulkQueue = [];
-      renderBulkQueuePreview();
-    });
-    document
-      .getElementById('btnStartBulkCampaign')
-      ?.addEventListener('click', runBulkOutboundCampaign);
-
-    document
-      .getElementById('step1ScriptInput')
-      ?.addEventListener('input', updateStep1LivePreview);
-
-    document.querySelectorAll('.chip-btn').forEach((chip) => {
-      chip.addEventListener('click', () => {
-        const placeholder = chip.getAttribute('data-insert') || '';
-        const textarea = document.getElementById('step1ScriptInput');
-        if (!textarea) return;
-        const start = textarea.selectionStart ?? textarea.value.length;
-        const end = textarea.selectionEnd ?? textarea.value.length;
-        textarea.value =
-          textarea.value.slice(0, start) + placeholder + textarea.value.slice(end);
-        updateStep1LivePreview();
-        textarea.focus();
+      .getElementById('btnDownloadLeadTemplate')
+      ?.addEventListener('click', () => {
+        const blob = new Blob(['\uFEFFName,Phone,Enquiry/Details\r\n'], {
+          type: 'text/csv;charset=utf-8;',
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Client_Leads_Upload_Template.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
       });
-    });
 
+    // Scan Google Sheet Button
     document
-      .getElementById('btnSaveWorkflowConfig')
-      ?.addEventListener('click', handleSaveWorkflowConfig);
+      .getElementById('btnScanGoogleSheet')
+      ?.addEventListener('click', handleScanGoogleSheet);
 
-    document
-      .getElementById('btnRunIntentTest')
-      ?.addEventListener('click', runIntentClassifierSandbox);
-    document
-      .getElementById('intentTestInput')
-      ?.addEventListener('input', runIntentClassifierSandbox);
+    // Quick Add Single Lead Form
+    document.getElementById('quickAddLeadForm')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const client = getClientById(state.selectedOutboundClientId);
+      if (!client) return;
 
-    document.querySelectorAll('#reportFilterTabs .filter-tab').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const filter = btn.getAttribute('data-filter') || 'ALL';
-        state.activeReportFilter = filter;
-        document.querySelectorAll('#reportFilterTabs .filter-tab').forEach((b) =>
-          b.classList.toggle('active', b === btn)
-        );
-        renderKPIs();
-        renderReportsTable();
+      const name = document.getElementById('quickLeadName').value.trim();
+      const phone = document.getElementById('quickLeadPhone').value.trim();
+      const enquiry =
+        document.getElementById('quickLeadEnquiry').value.trim() || 'Enquiry';
+      const simMode = document.getElementById('quickLeadSimMode').value;
+
+      if (!name || !phone) return;
+
+      client.leads.push({
+        id: `LEAD-${Date.now()}`,
+        name,
+        phone,
+        enquiry,
+        simMode,
+        status: 'PENDING',
+        answers: {},
+        callSummary: '',
+        calledAt: '',
       });
-    });
 
-    document.getElementById('reportSearchInput')?.addEventListener('input', (e) => {
-      state.reportSearchQuery = e.target.value || '';
-      renderReportsTable();
-    });
+      document.getElementById('quickLeadName').value = '';
+      document.getElementById('quickLeadPhone').value = '';
+      document.getElementById('quickLeadEnquiry').value = '';
 
-    document
-      .getElementById('btnExportCsv')
-      ?.addEventListener('click', exportReportsToCsv);
-
-    document
-      .getElementById('btnOpenNewWorkflowModal')
-      ?.addEventListener('click', openNewWorkflowModal);
-    document
-      .getElementById('btnCloseNewWorkflowModal')
-      ?.addEventListener('click', closeNewWorkflowModal);
-    document
-      .getElementById('btnCancelNewWorkflow')
-      ?.addEventListener('click', closeNewWorkflowModal);
-    document
-      .getElementById('newWorkflowForm')
-      ?.addEventListener('submit', handleCreateNewWorkflow);
-
-    document.getElementById('btnClearAllData')?.addEventListener('click', () => {
-      state.reports = [];
-      saveLocalState();
+      saveState();
       renderAll();
-      showToast('Cleared all call verification records.');
+      showToast(`Added lead "${name}" to ${client.name}.`);
     });
 
-    document.getElementById('settingSpeechRate')?.addEventListener('input', (e) => {
-      state.speechRate = parseFloat(e.target.value) || 1.0;
-      const lbl = document.getElementById('lblSpeechRateVal');
-      if (lbl) lbl.textContent = `${state.speechRate.toFixed(2)}x`;
+    // Start & Stop Calling Buttons
+    document
+      .getElementById('btnStartClientCalling')
+      ?.addEventListener('click', startClientOutboundCalling);
+    document
+      .getElementById('btnStopClientCalling')
+      ?.addEventListener('click', requestStopAfterCurrentCall);
+
+    // Client Lead Qualification Tabs (All, Qualified, Not Qualified, Not Attended)
+    document.querySelectorAll('#clientLeadTabs .filter-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        state.activeClientLeadTab = tab.getAttribute('data-lead-tab') || 'ALL';
+        document.querySelectorAll('#clientLeadTabs .filter-tab').forEach((t) =>
+          t.classList.toggle('active', t === tab)
+        );
+        renderOutboundView();
+      });
     });
-    document.getElementById('settingSpeechPitch')?.addEventListener('input', (e) => {
-      state.speechPitch = parseFloat(e.target.value) || 1.0;
-      const lbl = document.getElementById('lblSpeechPitchVal');
-      if (lbl) lbl.textContent = state.speechPitch.toFixed(2);
+
+    // Download Current Tab vs Full Client Sheet
+    document
+      .getElementById('btnDownloadCurrentTabCsv')
+      ?.addEventListener('click', () => {
+        const client = getClientById(state.selectedOutboundClientId);
+        if (client) exportClientLeadsToCsv(client, state.activeClientLeadTab);
+      });
+    document
+      .getElementById('btnDownloadAllClientLeadsCsv')
+      ?.addEventListener('click', () => {
+        const client = getClientById(state.selectedOutboundClientId);
+        if (client) exportClientLeadsToCsv(client, 'ALL');
+      });
+    document.getElementById('btnClearClientLeads')?.addEventListener('click', () => {
+      const client = getClientById(state.selectedOutboundClientId);
+      if (!client) return;
+      client.leads = [];
+      saveState();
+      renderAll();
+      showToast(`Cleared leads for ${client.name}.`);
     });
-    document.getElementById('btnTestVoiceEngine')?.addEventListener('click', () => {
-      const wf = getActiveWorkflow();
-      speakText(wf.step1Script);
-      showToast('Playing Reach AI Voice Tamil + English TTS Sample...');
+
+    // Trainer Page Events
+    document
+      .getElementById('trainerClientSelect')
+      ?.addEventListener('change', renderTrainerView);
+
+    document
+      .getElementById('btnSaveTrainerConfig')
+      ?.addEventListener('click', async () => {
+        const clientId = document.getElementById('trainerClientSelect')?.value;
+        const client = getClientById(clientId);
+        if (!client) return;
+
+        client.trainer = {
+          persona: document.getElementById('trainerPersonaInput').value.trim(),
+          whatToSpeak: document.getElementById('trainerWhatToSpeak').value.trim(),
+          forbiddenPhrases: document
+            .getElementById('trainerForbiddenPhrases')
+            .value.trim(),
+          whatNotToSpeak: document
+            .getElementById('trainerWhatNotToSpeak')
+            .value.trim(),
+          positiveKeywords: document
+            .getElementById('trainerPositiveKeywords')
+            .value.trim(),
+          negativeKeywords: document
+            .getElementById('trainerNegativeKeywords')
+            .value.trim(),
+        };
+
+        saveState();
+        await tryApiCall(API_CONFIG.ENDPOINTS.TRAINER(client.id), {
+          method: 'PUT',
+          body: JSON.stringify(client.trainer),
+        });
+        showToast(`Saved LLM Trainer instructions for "${client.name}"!`);
+      });
+
+    // Verification Report Page Events
+    document
+      .getElementById('reportClientFilterSelect')
+      ?.addEventListener('change', (e) => {
+        state.activeReportClientFilter = e.target.value || 'ALL';
+        renderReportsView();
+      });
+
+    document.querySelectorAll('#reportStatusFilterTabs .filter-tab').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.activeReportStatusFilter = btn.getAttribute('data-rep-status') || 'ALL';
+        document
+          .querySelectorAll('#reportStatusFilterTabs .filter-tab')
+          .forEach((b) => b.classList.toggle('active', b === btn));
+        renderReportsView();
+      });
     });
+
+    document
+      .getElementById('btnExportVerificationReport')
+      ?.addEventListener('click', exportOverallVerificationReportCsv);
   }
 
-  function readCsvFile(file) {
+  function handleLeadFileUpload(file) {
+    const client = getClientById(state.selectedOutboundClientId);
+    if (!client) return;
+
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const parsed = parseCsvText(ev.target?.result || '');
-      state.bulkQueue = parsed;
-      renderBulkQueuePreview();
-      showToast(`Parsed ${parsed.length} leads from "${file.name}"`);
+    reader.onload = async (ev) => {
+      const leads = parseRowsIntoLeads(ev.target?.result || '');
+      if (leads.length === 0) {
+        showToast('No valid rows found in file. Use columns: Name, Phone, Enquiry.');
+        return;
+      }
+      client.leads.push(...leads);
+      saveState();
+      await tryApiCall(API_CONFIG.ENDPOINTS.CLIENT_LEADS(client.id), {
+        method: 'POST',
+        body: JSON.stringify({ leads }),
+      });
+      renderAll();
+      showToast(`Uploaded ${leads.length} leads from "${file.name}" to ${client.name}!`);
     };
     reader.readAsText(file);
   }
 
-  // ==================== INITIALIZE ====================
+  // ==================== BOOTSTRAP ====================
   document.addEventListener('DOMContentLoaded', () => {
+    loadState();
+    resetWorkflowEditorToNew();
     bindEvents();
-    syncWithBackendOnBoot();
+    renderAll();
   });
 })();
