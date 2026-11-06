@@ -1,0 +1,9 @@
+{
+  "name": "reach-ai-voice",
+  "version": "1.0.0",
+  "description": "Reach AI Voice — Multi-Workflow Outbound Dashboard (Frontend UI)",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "start": "npm --prefix frontend run dev"
+  }
+}
