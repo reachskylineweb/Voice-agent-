@@ -645,19 +645,112 @@ body {
 }
 
 .saved-workflows-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 18px;
 }
 
 .saved-wf-card {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: 20px;
   background: var(--bg-subtle);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.saved-wf-card:hover {
+  border-color: var(--brand-gold);
+  box-shadow: var(--card-shadow);
+}
+
+/* ==================== POPUP MODAL FOR CLIENT WORKFLOW FORM ==================== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 28, 25, 0.65);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 1050;
+}
+
+.modal-backdrop.hidden {
+  display: none !important;
+}
+
+.modal-dialog {
+  width: 100%;
+  max-width: 720px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-top: 5px solid var(--brand-gold);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 55px rgba(30, 28, 25, 0.35);
+  padding: 26px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.modal-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-input);
+  background: var(--bg-subtle);
+  color: var(--brand-dark);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.modal-close-btn:hover {
+  background: var(--brand-dark);
+  color: var(--brand-gold);
+  border-color: var(--brand-dark);
+}
+
+.modal-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-color);
 }
 
 .saved-wf-top {

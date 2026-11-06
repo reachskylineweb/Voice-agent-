@@ -201,11 +201,24 @@
     switchView('outbound');
   }
 
+  function openClientWorkflowModal() {
+    const modal = document.getElementById('clientWorkflowModal');
+    if (modal) {
+      modal.classList.remove('hidden');
+      setTimeout(() => document.getElementById('wfClientName')?.focus(), 50);
+    }
+  }
+
+  function closeClientWorkflowModal() {
+    const modal = document.getElementById('clientWorkflowModal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+  }
+
   function loadClientIntoWorkflowEditor(clientId) {
     const client = getClientById(clientId);
     if (!client) return;
-
-    switchView('workflows');
 
     document.getElementById('wfClientId').value = client.id;
     document.getElementById('wfClientName').value = client.name;
@@ -220,6 +233,7 @@
 
     state.editingQuestionsDraft = JSON.parse(JSON.stringify(client.questions || []));
     renderQuestionsBuilderRows();
+    openClientWorkflowModal();
   }
 
   function resetWorkflowEditorToNew() {
@@ -395,7 +409,7 @@
     if (!container) return;
 
     if (state.clients.length === 0) {
-      container.innerHTML = `<div style="padding: 24px; color: #706b63;">No clients saved yet. Use the form on the left to add a client and workflow questions.</div>`;
+      container.innerHTML = `<div style="padding: 24px; color: #706b63;">No clients saved yet. Click "+ Add New Client" to open the popup form and add a client workflow.</div>`;
       return;
     }
 
@@ -1147,18 +1161,34 @@
       });
     });
 
-    // Topbar & Dashboard Quick Add Client buttons
+    // Topbar, Dashboard & Client Workflow Page "+ Add New Client" Popup Modal buttons
     document.getElementById('btnQuickAddClientTop')?.addEventListener('click', () => {
       resetWorkflowEditorToNew();
-      switchView('workflows');
+      openClientWorkflowModal();
     });
     document.getElementById('btnDashGoToAddClient')?.addEventListener('click', () => {
       resetWorkflowEditorToNew();
-      switchView('workflows');
+      openClientWorkflowModal();
     });
+    document.getElementById('btnOpenNewClientModal')?.addEventListener('click', () => {
+      resetWorkflowEditorToNew();
+      openClientWorkflowModal();
+    });
+
+    // Close / Cancel Client Workflow Popup Modal
     document
-      .getElementById('btnResetWorkflowForm')
-      ?.addEventListener('click', resetWorkflowEditorToNew);
+      .getElementById('btnCloseClientModal')
+      ?.addEventListener('click', closeClientWorkflowModal);
+    document
+      .getElementById('btnCancelClientModal')
+      ?.addEventListener('click', closeClientWorkflowModal);
+    document
+      .getElementById('clientWorkflowModal')
+      ?.addEventListener('click', (e) => {
+        if (e.target.id === 'clientWorkflowModal') {
+          closeClientWorkflowModal();
+        }
+      });
 
     // Add Question Row in Client Workflow Form
     document.getElementById('btnAddQuestionRow')?.addEventListener('click', () => {
@@ -1240,6 +1270,7 @@
         }
 
         saveState();
+        closeClientWorkflowModal();
         renderAll();
       });
 

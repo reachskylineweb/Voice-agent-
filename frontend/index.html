@@ -189,128 +189,30 @@
       </section>
 
       <!-- ====================================================================
-           PAGE 2: CLIENT WORKFLOW (ADD / EDIT CLIENT & QUESTIONS TO SPEAK)
+           PAGE 2: CLIENT WORKFLOW (SAVED CLIENTS & WORKFLOWS + POPUP FORM)
            ==================================================================== -->
       <section class="view-section" id="view-workflows">
         <div class="page-title-bar">
           <div>
             <h1 class="page-heading">Client Workflow Configuration</h1>
-            <p class="page-subheading">Add a new client or edit an existing client's workflow details and the exact questions the voice agent must ask on the call.</p>
+            <p class="page-subheading">View saved clients and their call workflow questions, or click "+ Add New Client" to open the client workflow popup form.</p>
           </div>
-          <button type="button" class="btn-ghost" id="btnResetWorkflowForm">
-            + New Client Form
+          <button type="button" class="btn-solid" id="btnOpenNewClientModal">
+            + Add New Client
           </button>
         </div>
 
-        <div class="workflow-builder-layout">
-          <!-- Left: Add / Edit Client & Dynamic Questions Form -->
-          <div class="surface-panel">
-            <div class="panel-bar">
-              <div class="panel-bar-titles">
-                <h2 class="panel-heading" id="wfFormHeading">Add New Client &amp; Workflow</h2>
-                <span class="panel-caption">Enter client details and add the questions to speak during the outbound call.</span>
-              </div>
-              <span class="mode-pill" id="wfFormModeBadge">New Client</span>
+        <!-- Saved Client Workflows List Only on This Page -->
+        <div class="surface-panel">
+          <div class="panel-bar">
+            <div class="panel-bar-titles">
+              <h2 class="panel-heading">Saved Client Workflows</h2>
+              <span class="panel-caption">Click "Edit Workflow &amp; Questions" to open the popup editor or "Open Outbound Calls" to upload leads.</span>
             </div>
-
-            <form id="clientWorkflowForm" class="stack-form">
-              <input type="hidden" id="wfClientId" value="" />
-
-              <div class="field-row-2">
-                <div class="field-block">
-                  <label for="wfClientName" class="field-label">Client Name <span class="req">*</span></label>
-                  <input
-                    type="text"
-                    id="wfClientName"
-                    class="field-input"
-                    placeholder="Enter client name"
-                    required
-                  />
-                </div>
-
-                <div class="field-block">
-                  <label for="wfIndustry" class="field-label">Company / Category <span class="req">*</span></label>
-                  <input
-                    type="text"
-                    id="wfIndustry"
-                    class="field-input"
-                    placeholder="Enter industry or category"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div class="field-row-2">
-                <div class="field-block">
-                  <label for="wfCallerId" class="field-label">Outbound Caller ID Number <span class="req">*</span></label>
-                  <input
-                    type="text"
-                    id="wfCallerId"
-                    class="field-input"
-                    placeholder="Enter outbound phone number"
-                    required
-                  />
-                </div>
-
-                <div class="field-block">
-                  <label for="wfVoiceLanguage" class="field-label">Voice Language &amp; Model</label>
-                  <select id="wfVoiceLanguage" class="field-select">
-                    <option value="Tamil + English (Pallavi HD)">Tamil + English (Pallavi HD)</option>
-                    <option value="Tamil Male (Valluvar HD)">Tamil Male (Valluvar HD)</option>
-                    <option value="Indian English (Neerja HD)">Indian English (Neerja HD)</option>
-                    <option value="Hindi + English (Aarav HD)">Hindi + English (Aarav HD)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="field-block">
-                <label for="wfOpeningGreeting" class="field-label">Opening Greeting to Speak in Call <span class="req">*</span></label>
-                <textarea
-                  id="wfOpeningGreeting"
-                  class="field-textarea"
-                  rows="2"
-                  placeholder="e.g., வணக்கம் {lead_name}, நான் {client_name} இலிருந்து பேசுகிறேன். நீங்கள் {enquiry_item} குறித்து விசாரித்தீர்கள்."
-                  required
-                ></textarea>
-              </div>
-
-              <!-- Dynamic Questions Builder -->
-              <div class="questions-builder-box">
-                <div class="questions-builder-header">
-                  <div>
-                    <h3 class="questions-heading">Questions to Ask in the Call (Yes / No)</h3>
-                    <p class="questions-caption">Add or edit the questions the voice agent will ask the lead one by one.</p>
-                  </div>
-                  <button type="button" class="btn-solid btn-sm" id="btnAddQuestionRow">
-                    + Add Question
-                  </button>
-                </div>
-
-                <div class="questions-list-container" id="wfQuestionsList">
-                  <!-- Question rows dynamically inserted by app.js -->
-                </div>
-              </div>
-
-              <div class="form-actions-bar">
-                <button type="submit" class="btn-solid btn-full" id="btnSaveClientWorkflow">
-                  Save Client Workflow
-                </button>
-              </div>
-            </form>
           </div>
 
-          <!-- Right: Saved Client Workflows List (Edit / Open / Delete) -->
-          <div class="surface-panel">
-            <div class="panel-bar">
-              <div class="panel-bar-titles">
-                <h2 class="panel-heading">Saved Client Workflows</h2>
-                <span class="panel-caption">Click "Edit Workflow" to modify questions or "Open Calls" to upload leads.</span>
-              </div>
-            </div>
-
-            <div class="saved-workflows-list" id="savedWorkflowsListContainer">
-              <!-- Populated dynamically by app.js -->
-            </div>
+          <div class="saved-workflows-list" id="savedWorkflowsListContainer">
+            <!-- Populated dynamically by app.js -->
           </div>
         </div>
       </section>
@@ -747,6 +649,112 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <!-- ====================================================================
+       POPUP MODAL: ADD / EDIT CLIENT & WORKFLOW FORM
+       ==================================================================== -->
+  <div class="modal-backdrop hidden" id="clientWorkflowModal" role="dialog" aria-modal="true" aria-labelledby="wfFormHeading">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-header-titles">
+          <div class="modal-title-row">
+            <h2 class="panel-heading" id="wfFormHeading">Add New Client &amp; Workflow</h2>
+            <span class="mode-pill" id="wfFormModeBadge">New Client</span>
+          </div>
+          <span class="panel-caption">Enter client details and add the questions to speak during the outbound call.</span>
+        </div>
+        <button type="button" class="modal-close-btn" id="btnCloseClientModal" aria-label="Close modal">✕</button>
+      </div>
+
+      <form id="clientWorkflowForm" class="stack-form modal-form-body">
+        <input type="hidden" id="wfClientId" value="" />
+
+        <div class="field-row-2">
+          <div class="field-block">
+            <label for="wfClientName" class="field-label">Client Name <span class="req">*</span></label>
+            <input
+              type="text"
+              id="wfClientName"
+              class="field-input"
+              placeholder="Enter client name"
+              required
+            />
+          </div>
+
+          <div class="field-block">
+            <label for="wfIndustry" class="field-label">Company / Category <span class="req">*</span></label>
+            <input
+              type="text"
+              id="wfIndustry"
+              class="field-input"
+              placeholder="Enter industry or category"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="field-row-2">
+          <div class="field-block">
+            <label for="wfCallerId" class="field-label">Outbound Caller ID Number <span class="req">*</span></label>
+            <input
+              type="text"
+              id="wfCallerId"
+              class="field-input"
+              placeholder="Enter outbound phone number"
+              required
+            />
+          </div>
+
+          <div class="field-block">
+            <label for="wfVoiceLanguage" class="field-label">Voice Language &amp; Model</label>
+            <select id="wfVoiceLanguage" class="field-select">
+              <option value="Tamil + English (Pallavi HD)">Tamil + English (Pallavi HD)</option>
+              <option value="Tamil Male (Valluvar HD)">Tamil Male (Valluvar HD)</option>
+              <option value="Indian English (Neerja HD)">Indian English (Neerja HD)</option>
+              <option value="Hindi + English (Aarav HD)">Hindi + English (Aarav HD)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-block">
+          <label for="wfOpeningGreeting" class="field-label">Opening Greeting to Speak in Call <span class="req">*</span></label>
+          <textarea
+            id="wfOpeningGreeting"
+            class="field-textarea"
+            rows="2"
+            placeholder="Enter the greeting spoken when the customer answers the call"
+            required
+          ></textarea>
+        </div>
+
+        <!-- Dynamic Questions Builder -->
+        <div class="questions-builder-box">
+          <div class="questions-builder-header">
+            <div>
+              <h3 class="questions-heading">Questions to Ask in the Call (Yes / No)</h3>
+              <p class="questions-caption">Add or edit the questions the voice agent will ask the lead one by one.</p>
+            </div>
+            <button type="button" class="btn-solid btn-sm" id="btnAddQuestionRow">
+              + Add Question
+            </button>
+          </div>
+
+          <div class="questions-list-container" id="wfQuestionsList">
+            <!-- Question rows dynamically inserted by app.js -->
+          </div>
+        </div>
+
+        <div class="modal-footer-actions">
+          <button type="button" class="btn-ghost" id="btnCancelClientModal">
+            Cancel
+          </button>
+          <button type="submit" class="btn-solid" id="btnSaveClientWorkflow">
+            Save Client Workflow
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- Toast Notification Container -->
