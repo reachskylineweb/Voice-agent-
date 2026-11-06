@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reach AI Voice — Multi-Workflow Outbound Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ==================== 1. LEFT SIDEBAR NAVIGATION ==================== -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-header">
+        <div class="brand-logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            <path d="M14.5 2a7.5 7.5 0 0 1 7.5 7.5"/>
+            <path d="M14.5 6a3.5 3.5 0 0 1 3.5 3.5"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">Reach AI Voice</span>
+          <span class="brand-subtitle">Outbound Verification Suite</span>
+        </div>
+      </div>
+
+      <div class="outbound-mode-pill">
+        <span class="status-dot pulse-emerald"></span>
+        <span>OUTBOUND CALLS ONLY</span>
+      </div>
+
+      <!-- Active Client Workflows Section -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-title">Active Client Workflows</span>
+          <span class="workflow-count-pill" id="sidebarWorkflowCount">2</span>
+        </div>
+
+        <div class="workflow-list" id="sidebarWorkflowList">
+          <!-- Dynamically populated by app.js (TATA Leads, Healing Earth, + custom workflows) -->
+        </div>
+
+        <button type="button" class="btn-new-workflow" id="btnOpenNewWorkflowModal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>+ New Workflow</span>
+        </button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- Main Navigation Tabs -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-title">Main Navigation</span>
+        </div>
+        <nav class="main-nav" id="mainNavTabs">
+          <button type="button" class="nav-tab active" data-view="campaign">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            <span>Outbound Campaign</span>
+          </button>
+
+          <button type="button" class="nav-tab" data-view="trainer">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            <span>Workflow Script Trainer</span>
+          </button>
+
+          <button type="button" class="nav-tab" data-view="reports">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+            <span>Verification Reports</span>
+            <span class="nav-badge" id="navReportCountBadge">0</span>
+          </button>
+
+          <button type="button" class="nav-tab" data-view="settings">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span>Voice Engine Settings</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Sidebar Footer Connection Status -->
+      <div class="sidebar-footer">
+        <div class="engine-status-box">
+          <div class="engine-status-row">
+            <span class="status-dot" id="apiConnectionDot"></span>
+            <span class="engine-status-label" id="apiConnectionText">Syncing Backend / Local State</span>
+          </div>
+          <div class="engine-status-sub">Reach AI Voice • Tamil + Tanglish + English</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ==================== MAIN CONTENT AREA ==================== -->
+    <main class="main-workspace">
+      <!-- Top Bar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="active-workflow-breadcrumb">
+            <span class="breadcrumb-prefix">Active Workflow:</span>
+            <span class="workflow-badge" id="topbarWorkflowBadge">TATA Leads Enquiry Verification</span>
+          </div>
+          <p class="topbar-desc" id="topbarWorkflowDescription">
+            Automated outbound verification calls for vehicle enquiry follow-up &amp; customer satisfaction.
+          </p>
+        </div>
+
+        <div class="topbar-right">
+          <div class="caller-id-chip" id="topbarCallerIdChip">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+            <span id="topbarCallerIdValue">Dedicated TATA: +91 98765 11111</span>
+          </div>
+          <button type="button" class="btn-secondary btn-sm" id="btnResetDemoData" title="Restore default sample records">
+            Reset Sample Data
+          </button>
+        </div>
+      </header>
+
+      <!-- ==================== 2. TOP KPI SUMMARY CARDS ==================== -->
+      <section class="kpi-grid" aria-label="Key Performance Indicators">
+        <!-- Card 1: Total Outbound Calls Dialed -->
+        <div class="kpi-card kpi-blue">
+          <div class="kpi-card-top">
+            <span class="kpi-title">Total Outbound Calls Dialed</span>
+            <div class="kpi-icon kpi-icon-blue">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                <polyline points="17 6 23 6 23 12"></polyline>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-number" id="kpiTotalCalls">0</span>
+            <span class="kpi-pill kpi-pill-blue" id="kpiScopeLabel">All Workflows</span>
+          </div>
+          <div class="kpi-subtext">100% Automated Outbound Verification</div>
+        </div>
+
+        <!-- Card 2: Q1: Staff Contacted (YES Count & %) -->
+        <div class="kpi-card kpi-emerald">
+          <div class="kpi-card-top">
+            <span class="kpi-title">Q1: Staff Contacted</span>
+            <div class="kpi-icon kpi-icon-emerald">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-number" id="kpiQ1YesCount">0</span>
+            <span class="kpi-pill kpi-pill-emerald" id="kpiQ1YesPercent">0% YES</span>
+          </div>
+          <div class="kpi-subtext" id="kpiQ1Subtext">Executive contacted customer</div>
+        </div>
+
+        <!-- Card 3: Q2: Understood & Satisfied (YES Count & %) -->
+        <div class="kpi-card kpi-indigo">
+          <div class="kpi-card-top">
+            <span class="kpi-title">Q2: Understood &amp; Satisfied</span>
+            <div class="kpi-icon kpi-icon-indigo">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                <line x1="15" y1="9" x2="15.01" y2="9"></line>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-number" id="kpiQ2YesCount">0</span>
+            <span class="kpi-pill kpi-pill-indigo" id="kpiQ2YesPercent">0% YES</span>
+          </div>
+          <div class="kpi-subtext" id="kpiQ2Subtext">Clear explanation &amp; satisfied</div>
+        </div>
+
+        <!-- Card 4: Pending / Needs Follow-Up (NO Count) -->
+        <div class="kpi-card kpi-rose">
+          <div class="kpi-card-top">
+            <span class="kpi-title">Pending / Needs Follow-Up</span>
+            <div class="kpi-icon kpi-icon-rose">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-number" id="kpiPendingNoCount">0</span>
+            <span class="kpi-pill kpi-pill-rose" id="kpiPendingNoBadge">NO Count</span>
+          </div>
+          <div class="kpi-subtext">Q1 NO or Q2 NO — Escalate to Team</div>
+        </div>
+      </section>
+
+      <!-- ==================== 3. OUTBOUND CAMPAIGN LAUNCHER VIEW ==================== -->
+      <section class="view-section active" id="view-campaign">
+        <!-- Configuration Row with 3 Dropdowns -->
+        <div class="panel config-bar-panel">
+          <div class="panel-header-inline">
+            <div>
+              <h2 class="panel-title">Outbound Campaign Configuration</h2>
+              <p class="panel-subtitle">Select workflow routing, dedicated caller ID, and regional voice synthesis model before dialing.</p>
+            </div>
+            <span class="tag-outbound">Reach AI Voice Trunk Ready</span>
+          </div>
+
+          <div class="config-dropdowns-grid">
+            <!-- a) Workflow Selector (Synced with Sidebar) -->
+            <div class="form-group">
+              <label for="workflowSelect">1. Active Client Workflow (Synced)</label>
+              <select id="workflowSelect" class="form-select">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+
+            <!-- b) Phone Number / Caller ID Routing -->
+            <div class="form-group">
+              <label for="callerIdSelect">2. Phone Number / Caller ID Routing</label>
+              <select id="callerIdSelect" class="form-select">
+                <option value="Shared Pool: +91 98765 00000">Shared Pool: +91 98765 00000</option>
+                <option value="Dedicated TATA: +91 98765 11111">Dedicated TATA: +91 98765 11111</option>
+                <option value="Dedicated Healing Earth: +91 98765 22222">Dedicated Healing Earth: +91 98765 22222</option>
+              </select>
+            </div>
+
+            <!-- c) Voice Model Selector -->
+            <div class="form-group">
+              <label for="voiceModelSelect">3. Voice Model Selector</label>
+              <select id="voiceModelSelect" class="form-select">
+                <option value="Tamil Female (Pallavi HD)">Tamil Female (Pallavi HD)</option>
+                <option value="Tamil Male (Valluvar HD)">Tamil Male (Valluvar HD)</option>
+                <option value="Indian English Female (Neerja HD)">Indian English Female (Neerja HD)</option>
+                <option value="100% Offline Local ONNX Model">100% Offline Local ONNX Model</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Two-Column Dialer + Bulk Campaign Grid -->
+        <div class="campaign-grid">
+          <!-- Single Number Dialer Card -->
+          <div class="panel dialer-card">
+            <div class="card-header">
+              <div class="card-header-left">
+                <span class="card-icon icon-indigo">📞</span>
+                <div>
+                  <h3 class="card-title">Single Number Outbound Dialer</h3>
+                  <p class="card-subtitle">Trigger an immediate outbound verification call to an individual lead</p>
+                </div>
+              </div>
+              <label class="tts-toggle-label" title="Speak AI script aloud using browser TTS during simulation">
+                <input type="checkbox" id="chkSpeakAudio" checked />
+                <span>🔊 Live Audio</span>
+              </label>
+            </div>
+
+            <form id="singleDialForm" class="dialer-form">
+              <div class="form-group">
+                <label for="singleCustomerName">Customer Name <span class="req">*</span></label>
+                <input
+                  type="text"
+                  id="singleCustomerName"
+                  class="form-input"
+                  placeholder="e.g., Karthik Subramanian"
+                  value="Karthik Subramanian"
+                  required
+                />
+              </div>
+
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="singlePhoneNumber">Phone Number <span class="req">*</span></label>
+                  <input
+                    type="tel"
+                    id="singlePhoneNumber"
+                    class="form-input"
+                    placeholder="e.g., +91 98401 23456"
+                    value="+91 98401 23456"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="singleEnquiryItem" id="lblSingleEnquiryItem">Vehicle / Service Name <span class="req">*</span></label>
+                  <input
+                    type="text"
+                    id="singleEnquiryItem"
+                    class="form-input"
+                    placeholder="e.g., TATA Nexon EV / Panchakarma Detox"
+                    value="TATA Nexon EV Empowered+"
+                    required
+                  />
+                </div>
+              </div>
+
+              <!-- Simulated Customer Response Selector -->
+              <div class="form-group">
+                <label for="singleSimulatedOutcome">Simulated Customer Response Mode (For Live Demo &amp; Testing)</label>
+                <select id="singleSimulatedOutcome" class="form-select">
+                  <option value="positive">Customer Answers: Q1 YES (Contacted) &amp; Q2 YES (Satisfied - Tamil/Tanglish)</option>
+                  <option value="partial_no">Customer Answers: Q1 YES (Contacted) &amp; Q2 NO (Not Satisfied / Needs Callback)</option>
+                  <option value="full_no">Customer Answers: Q1 NO (Nobody Contacted Yet) &amp; Q2 NO</option>
+                  <option value="custom">Custom Spoken Transcript (Type below)</option>
+                </select>
+              </div>
+
+              <div class="form-group hidden" id="customTranscriptGroup">
+                <label for="singleCustomTranscript">Custom Customer Spoken Response (Tamil / Tanglish / English)</label>
+                <input
+                  type="text"
+                  id="singleCustomTranscript"
+                  class="form-input"
+                  placeholder="e.g., ஆமா கால் பண்ணாங்க, ஆனா EMI details சரியா சொல்லல"
+                />
+              </div>
+
+              <div class="dialer-actions">
+                <button type="submit" class="btn-primary btn-dial-now" id="btnDialNow">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                  </svg>
+                  <span>Dial Now</span>
+                </button>
+              </div>
+            </form>
+
+            <!-- Live Outbound Call Progress Monitor -->
+            <div class="live-call-monitor" id="singleCallMonitor">
+              <div class="monitor-header">
+                <span class="monitor-status-badge" id="singleCallStatusBadge">READY TO DIAL</span>
+                <span class="monitor-timer" id="singleCallTimer">00:00</span>
+              </div>
+              <div class="monitor-steps" id="singleCallSteps">
+                <div class="step-pill" data-step="1">1. Greeting</div>
+                <div class="step-pill" data-step="2">2. Q1 Contacted?</div>
+                <div class="step-pill" data-step="3">3. Q2 Satisfied?</div>
+                <div class="step-pill" data-step="4">4. Logged</div>
+              </div>
+              <div class="monitor-transcript-box" id="singleCallLiveFeed">
+                Click <strong>Dial Now</strong> to initiate a live outbound call via <span id="monitorCallerIdPreview">Dedicated TATA: +91 98765 11111</span>.
+              </div>
+            </div>
+          </div>
+
+          <!-- Bulk CSV / Excel Upload Card -->
+          <div class="panel bulk-card">
+            <div class="card-header">
+              <div class="card-header-left">
+                <span class="card-icon icon-emerald">📂</span>
+                <div>
+                  <h3 class="card-title">Bulk CSV / Excel Outbound Campaign</h3>
+                  <p class="card-subtitle">Upload lead sheets (Columns: <code>Name, Phone, Vehicle/Service</code>) for automated batch dialing</p>
+                </div>
+              </div>
+              <div class="bulk-sample-actions">
+                <button type="button" class="btn-outline-xs" id="btnLoadSampleCsv">Load Sample Leads</button>
+                <button type="button" class="btn-outline-xs" id="btnDownloadTemplateCsv">CSV Template</button>
+              </div>
+            </div>
+
+            <!-- Drag and Drop Zone -->
+            <div class="dropzone" id="csvDropzone">
+              <input type="file" id="csvFileInput" accept=".csv,.txt,.tsv" class="hidden-file-input" />
+              <div class="dropzone-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </div>
+              <div class="dropzone-title">Drag &amp; drop CSV / Excel (.csv) file here, or <span class="dropzone-link">browse file</span></div>
+              <div class="dropzone-hint">Required columns: <strong>Name, Phone, Vehicle/Service</strong></div>
+            </div>
+
+            <!-- Parsed Leads Preview & Count -->
+            <div class="bulk-preview-box">
+              <div class="bulk-preview-header">
+                <span class="bulk-preview-title">Queue Preview: <strong id="bulkLeadCount">0</strong> leads ready to dial</span>
+                <button type="button" class="btn-text-danger" id="btnClearBulkQueue">Clear Queue</button>
+              </div>
+              <div class="bulk-preview-list" id="bulkPreviewList">
+                <div class="empty-preview-msg">No CSV loaded yet. Drag a CSV file above or click "Load Sample Leads" to test immediately.</div>
+              </div>
+            </div>
+
+            <!-- Live Campaign Progress Bar -->
+            <div class="bulk-progress-wrapper" id="bulkProgressWrapper">
+              <div class="bulk-progress-labels">
+                <span id="bulkProgressStatusText">Campaign Idle</span>
+                <span id="bulkProgressStatsText">0 / 0 Dialed (0%)</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" id="bulkProgressBarFill" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <button type="button" class="btn-emerald btn-bulk-start" id="btnStartBulkCampaign">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <span>Start Bulk Outbound Campaign</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== 4. 3-STEP WORKFLOW SCRIPT & INTENT TRAINER VIEW ==================== -->
+      <section class="view-section" id="view-trainer">
+        <div class="panel trainer-top-panel">
+          <div class="trainer-header-bar">
+            <div>
+              <h2 class="panel-title">3-Step Workflow Script &amp; Intent Trainer</h2>
+              <p class="panel-subtitle">
+                Configure bilingual outbound voice scripts (<code>{customer_name}</code>, <code>{enquiry_item}</code>) and Tamil / Tanglish / English NLU keyword classifiers.
+              </p>
+            </div>
+            <div class="trainer-header-controls">
+              <select id="trainerWorkflowSelect" class="form-select"></select>
+              <button type="button" class="btn-primary" id="btnSaveWorkflowConfig">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                <span>Save Workflow Configuration</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="trainer-steps-grid">
+          <!-- STEP 1: Greeting & Enquiry Confirmation -->
+          <div class="panel step-card">
+            <div class="step-card-header">
+              <span class="step-number-badge step-badge-1">STEP 1</span>
+              <div>
+                <h3 class="card-title">Greeting &amp; Enquiry Confirmation</h3>
+                <p class="card-subtitle">Bilingual greeting template with dynamic variables <code>{customer_name}</code> &amp; <code>{enquiry_item}</code></p>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="step1ScriptInput">Spoken Greeting Script (Tamil + English)</label>
+              <textarea id="step1ScriptInput" class="form-textarea" rows="4"></textarea>
+            </div>
+
+            <div class="variable-chips-row">
+              <span class="var-hint">Click to insert placeholder:</span>
+              <button type="button" class="chip-btn" data-insert="{customer_name}">+ {customer_name}</button>
+              <button type="button" class="chip-btn" data-insert="{enquiry_item}">+ {enquiry_item}</button>
+            </div>
+
+            <div class="live-script-preview">
+              <div class="preview-label">Live Rendered Greeting Preview:</div>
+              <div class="preview-content" id="step1LivePreview"></div>
+            </div>
+          </div>
+
+          <!-- STEP 2: Q1 — Staff Contacted? -->
+          <div class="panel step-card">
+            <div class="step-card-header">
+              <span class="step-number-badge step-badge-2">STEP 2 • Q1</span>
+              <div>
+                <h3 class="card-title">Q1 — Staff Contacted Verification</h3>
+                <p class="card-subtitle">Asks if our executive/specialist contacted the customer regarding their enquiry</p>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="step2ScriptInput">Q1 Spoken Question Script</label>
+              <textarea id="step2ScriptInput" class="form-textarea" rows="3"></textarea>
+            </div>
+
+            <div class="keywords-grid-2">
+              <div class="form-group">
+                <label for="q1YesKeywords" class="kw-label-yes">
+                  <span class="badge-yes-dot"></span> Positive (YES) Keywords (Tamil, Tanglish, English)
+                </label>
+                <textarea id="q1YesKeywords" class="form-textarea kw-textarea-yes" rows="3" placeholder="Comma-separated YES keywords"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="q1NoKeywords" class="kw-label-no">
+                  <span class="badge-no-dot"></span> Negative (NO) Keywords (Tamil, Tanglish, English)
+                </label>
+                <textarea id="q1NoKeywords" class="form-textarea kw-textarea-no" rows="3" placeholder="Comma-separated NO keywords"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 3: Q2 — Understood & Satisfied? -->
+          <div class="panel step-card">
+            <div class="step-card-header">
+              <span class="step-number-badge step-badge-3">STEP 3 • Q2</span>
+              <div>
+                <h3 class="card-title">Q2 — Understood &amp; Satisfied Verification</h3>
+                <p class="card-subtitle">Verifies whether the customer understood the details clearly and is satisfied</p>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="step3ScriptInput">Q2 Spoken Question Script</label>
+              <textarea id="step3ScriptInput" class="form-textarea" rows="3"></textarea>
+            </div>
+
+            <div class="keywords-grid-2">
+              <div class="form-group">
+                <label for="q2YesKeywords" class="kw-label-yes">
+                  <span class="badge-yes-dot"></span> Positive (YES) Keywords (Tamil, Tanglish, English)
+                </label>
+                <textarea id="q2YesKeywords" class="form-textarea kw-textarea-yes" rows="3" placeholder="Comma-separated YES keywords"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="q2NoKeywords" class="kw-label-no">
+                  <span class="badge-no-dot"></span> Negative (NO) Keywords (Tamil, Tanglish, English)
+                </label>
+                <textarea id="q2NoKeywords" class="form-textarea kw-textarea-no" rows="3" placeholder="Comma-separated NO keywords"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Intent Classifier Sandbox -->
+        <div class="panel intent-tester-panel">
+          <div class="intent-tester-header">
+            <div>
+              <h3 class="card-title">Live Tamil / Tanglish / English Intent Classifier Tester</h3>
+              <p class="card-subtitle">Test how customer speech transcripts map to Q1 &amp; Q2 YES/NO badges using your configured keywords.</p>
+            </div>
+          </div>
+          <div class="intent-tester-row">
+            <input
+              type="text"
+              id="intentTestInput"
+              class="form-input"
+              value="ஆமா சார் கால் பண்ணி பேசினாங்க, எல்லாமே தெளிவா புரிஞ்சது ரொம்ப திருப்தி"
+              placeholder="Type a Tamil, Tanglish, or English customer response to test..."
+            />
+            <button type="button" class="btn-secondary" id="btnRunIntentTest">Test Intent Detection</button>
+            <div class="intent-test-results" id="intentTestResults">
+              <span>Q1: <strong class="badge-yes">YES</strong></span>
+              <span>Q2: <strong class="badge-yes">YES</strong></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== 5. CLIENT-WISE VERIFICATION REPORT TABLE ==================== -->
+      <section class="view-section" id="view-reports"></section>
+
+      <section class="panel reports-section-panel" id="reportsContainerSection">
+        <div class="reports-header-bar">
+          <div>
+            <h2 class="panel-title">Client-Wise Outbound Verification Report</h2>
+            <p class="panel-subtitle">Real-time outbound call outcomes, Q1/Q2 verification badges, and customer spoken transcripts.</p>
+          </div>
+
+          <div class="reports-actions-right">
+            <div class="search-box">
+              <input
+                type="search"
+                id="reportSearchInput"
+                class="form-input form-input-sm"
+                placeholder="Search customer, phone, vehicle/service, transcript..."
+              />
+            </div>
+            <button type="button" class="btn-emerald btn-export-csv" id="btnExportCsv">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Export CSV / Excel</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="report-filter-tabs" id="reportFilterTabs">
+          <button type="button" class="filter-tab active" data-filter="ALL">
+            All Workflows <span class="tab-count" id="countFilterAll">0</span>
+          </button>
+          <button type="button" class="filter-tab" data-filter="tata-leads">
+            TATA Leads Only <span class="tab-count" id="countFilterTata">0</span>
+          </button>
+          <button type="button" class="filter-tab" data-filter="healing-earth">
+            Healing Earth Only <span class="tab-count" id="countFilterHealing">0</span>
+          </button>
+          <button type="button" class="filter-tab filter-tab-alert" data-filter="NEEDS_FOLLOWUP">
+            Needs Follow-Up (NO) <span class="tab-count" id="countFilterFollowup">0</span>
+          </button>
+        </div>
+
+        <!-- Exact 8-Column Verification Table -->
+        <div class="table-responsive">
+          <table class="verification-table" id="verificationReportTable">
+            <thead>
+              <tr>
+                <th>1. Date &amp; Time</th>
+                <th>2. Workflow Name</th>
+                <th>3. Dialed From Number</th>
+                <th>4. Customer Name &amp; Phone</th>
+                <th>5. Enquiry Item</th>
+                <th>6. Q1: Staff Contacted</th>
+                <th>7. Q2: Understood &amp; Satisfied</th>
+                <th>8. Customer Spoken Transcript / Remark</th>
+              </tr>
+            </thead>
+            <tbody id="verificationReportTbody">
+              <!-- Populated dynamically by app.js -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ==================== VOICE ENGINE SETTINGS VIEW ==================== -->
+      <section class="view-section" id="view-settings">
+        <div class="panel">
+          <div class="panel-header-inline">
+            <div>
+              <h2 class="panel-title">Reach AI Voice Engine &amp; Telephony Trunk Settings</h2>
+              <p class="panel-subtitle">Configure Tamil / Indian English TTS synthesis parameters, ONNX offline fallback, and outbound SIP caller IDs.</p>
+            </div>
+          </div>
+
+          <div class="settings-grid">
+            <div class="settings-card">
+              <h3 class="card-title">Regional Speech Synthesis (TTS)</h3>
+              <div class="form-group">
+                <label for="settingDefaultVoice">Default Outbound Voice Model</label>
+                <select id="settingDefaultVoice" class="form-select">
+                  <option value="Tamil Female (Pallavi HD)">Tamil Female (Pallavi HD)</option>
+                  <option value="Tamil Male (Valluvar HD)">Tamil Male (Valluvar HD)</option>
+                  <option value="Indian English Female (Neerja HD)">Indian English Female (Neerja HD)</option>
+                  <option value="100% Offline Local ONNX Model">100% Offline Local ONNX Model</option>
+                </select>
+              </div>
+
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="settingSpeechRate">Speaking Rate (<span id="lblSpeechRateVal">1.0x</span>)</label>
+                  <input type="range" id="settingSpeechRate" min="0.75" max="1.35" step="0.05" value="1.0" class="form-range" />
+                </div>
+                <div class="form-group">
+                  <label for="settingSpeechPitch">Voice Pitch (<span id="lblSpeechPitchVal">1.0</span>)</label>
+                  <input type="range" id="settingSpeechPitch" min="0.8" max="1.2" step="0.05" value="1.0" class="form-range" />
+                </div>
+              </div>
+
+              <button type="button" class="btn-secondary" id="btnTestVoiceEngine">
+                🔊 Test Tamil + English Voice Sample
+              </button>
+            </div>
+
+            <div class="settings-card">
+              <h3 class="card-title">Outbound Caller ID Pool &amp; Trunk</h3>
+              <div class="form-group">
+                <label>Configured Outbound CLI Numbers</label>
+                <ul class="cli-list">
+                  <li><strong>Shared Pool:</strong> +91 98765 00000 <span class="cli-status">Active</span></li>
+                  <li><strong>Dedicated TATA:</strong> +91 98765 11111 <span class="cli-status">Active</span></li>
+                  <li><strong>Dedicated Healing Earth:</strong> +91 98765 22222 <span class="cli-status">Active</span></li>
+                </ul>
+              </div>
+              <div class="form-group">
+                <label>Call Direction Policy</label>
+                <div class="policy-banner">
+                  🔒 <strong>Strict Outbound-Only Mode Enabled:</strong> Inbound call reception is disabled at the trunk level per Reach AI Voice specification.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ==================== "+ ADD NEW WORKFLOW" MODAL ==================== -->
+  <div class="modal-backdrop hidden" id="newWorkflowModalBackdrop">
+    <div class="modal-dialog" role="dialog" aria-labelledby="modalNewWorkflowTitle" aria-modal="true">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="modalNewWorkflowTitle">+ Add New Outbound Client Workflow</h3>
+          <p class="modal-subtitle">Create a new dedicated client verification workflow with 3-step bilingual scripts.</p>
+        </div>
+        <button type="button" class="modal-close-btn" id="btnCloseNewWorkflowModal" aria-label="Close">&times;</button>
+      </div>
+
+      <form id="newWorkflowForm" class="modal-body">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="newWfName">Full Workflow Name <span class="req">*</span></label>
+            <input
+              type="text"
+              id="newWfName"
+              class="form-input"
+              placeholder="e.g., Mahindra SUV Test-Drive Verification"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="newWfShortName">Sidebar Short Name <span class="req">*</span></label>
+            <input
+              type="text"
+              id="newWfShortName"
+              class="form-input"
+              placeholder="e.g., Mahindra Leads"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="newWfCallerId">Default Caller ID Routing</label>
+            <select id="newWfCallerId" class="form-select">
+              <option value="Shared Pool: +91 98765 00000">Shared Pool: +91 98765 00000</option>
+              <option value="Dedicated TATA: +91 98765 11111">Dedicated TATA: +91 98765 11111</option>
+              <option value="Dedicated Healing Earth: +91 98765 22222">Dedicated Healing Earth: +91 98765 22222</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="newWfBadgeColor">Workflow Badge Theme</label>
+            <select id="newWfBadgeColor" class="form-select">
+              <option value="blue">Royal Blue (Automotive / Enterprise)</option>
+              <option value="emerald">Emerald Green (Healthcare / Ayurveda)</option>
+              <option value="purple">Violet Indigo (Real Estate / Finance)</option>
+              <option value="amber">Warm Amber (Retail / Hospitality)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="newWfStep1">Step 1: Greeting &amp; Enquiry Confirmation Script</label>
+          <textarea id="newWfStep1" class="form-textarea" rows="2" required>வணக்கம் {customer_name}, நீங்கள் {enquiry_item} பற்றி விசாரித்தீர்கள். Hello {customer_name}, we are calling regarding your enquiry for {enquiry_item}.</textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="newWfStep2">Step 2 (Q1): Staff Contacted Question Script</label>
+          <textarea id="newWfStep2" class="form-textarea" rows="2" required>எங்கள் அதிகாரிகள் உங்களை தொடர்பு கொண்டு பேசினார்களா? Did our executive contact you regarding {enquiry_item}?</textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="newWfStep3">Step 3 (Q2): Understood &amp; Satisfied Question Script</label>
+          <textarea id="newWfStep3" class="form-textarea" rows="2" required>விவரங்கள் உங்களுக்கு தெளிவாக புரிந்ததா மற்றும் திருப்திகரமாக இருந்ததா? Did you clearly understand the details and are you satisfied?</textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="btnCancelNewWorkflow">Cancel</button>
+          <button type="submit" class="btn-primary">Create &amp; Activate Workflow</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

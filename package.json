@@ -1,24 +1,11 @@
 {
-  "name": "gym-ai-receptionist",
+  "name": "reach-ai-voice",
   "version": "1.0.0",
-  "description": "AI Voice Receptionist & Front-Desk Kiosk for Gyms powered by Google Gemini",
-  "main": "dist/server.js",
+  "description": "Reach AI Voice — Multi-Workflow Outbound Verification Dashboard & Backend",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/server.js",
-    "dev": "ts-node src/server.ts"
-  },
-  "dependencies": {
-    "@google/genai": "^1.0.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2"
-  },
-  "devDependencies": {
-    "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.0",
-    "@types/node": "^22.10.2",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.7.2"
+    "install:backend": "npm --prefix backend install",
+    "dev": "npm --prefix backend run dev",
+    "build": "npm --prefix backend run build",
+    "start": "npm --prefix backend start"
   }
 }
