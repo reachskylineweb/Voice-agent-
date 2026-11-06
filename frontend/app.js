@@ -376,8 +376,7 @@
     const callerSelect = document.getElementById('callerIdSelect');
 
     if (badge) {
-      badge.textContent = wf.name;
-      badge.className = `workflow-badge ${wf.badgeColor || 'blue'}`;
+      badge.innerHTML = `Workflow: <strong>${escapeHtml(wf.shortName || wf.name)}</strong>`;
     }
     if (desc) {
       desc.textContent = wf.description || `Outbound verification workflow for ${wf.name}`;

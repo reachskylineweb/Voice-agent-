@@ -112,24 +112,42 @@
 
     <!-- ==================== MAIN WORKSPACE AREA ==================== -->
     <main class="main-workspace">
-      <!-- Top Header Bar -->
+      <!-- Top Floating Status Bar (Matches Reference Screenshot) -->
       <header class="topbar">
-        <div class="topbar-left">
-          <div class="breadcrumb-row">
-            <span class="breadcrumb-root">Workflows</span>
-            <span class="breadcrumb-sep">/</span>
-            <span class="workflow-badge" id="topbarWorkflowBadge">TATA Leads Enquiry Verification</span>
+        <div class="topbar-status-items">
+          <div class="status-item">
+            <svg class="status-icon-green" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="8" r="6"></circle>
+              <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"></path>
+            </svg>
+            <span class="status-item-text" id="topbarCallerIdValue">Dedicated TATA: +91 98765 11111</span>
           </div>
-          <p class="topbar-desc" id="topbarWorkflowDescription">
-            Automated outbound verification calls for vehicle enquiry follow-up and customer satisfaction.
-          </p>
+
+          <div class="status-item">
+            <svg class="status-icon-green" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+              <line x1="12" y1="2" x2="12" y2="12"></line>
+            </svg>
+            <span class="status-item-text">Status: <strong>Live</strong></span>
+          </div>
+
+          <div class="status-item">
+            <svg class="status-icon-green" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+              <line x1="4" y1="22" x2="4" y2="15"></line>
+            </svg>
+            <span class="status-item-text">Quality: <span class="quality-dot"></span> <strong>GREEN</strong></span>
+          </div>
+
+          <div class="status-item">
+            <svg class="status-icon-green" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span class="status-item-text" id="topbarWorkflowBadge">TATA Leads Enquiry Verification</span>
+          </div>
         </div>
 
         <div class="topbar-right">
-          <div class="cli-readout" id="topbarCallerIdChip">
-            <span class="cli-label">Caller ID</span>
-            <span class="cli-number" id="topbarCallerIdValue">Dedicated TATA: +91 98765 11111</span>
-          </div>
           <button type="button" class="btn-ghost btn-sm" id="btnClearAllData" title="Clear all call report records">
             Clear records
           </button>
