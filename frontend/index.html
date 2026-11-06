@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reach AI Voice — Multi-Workflow Outbound Dashboard</title>
+  <title>Reach AI Voice — Outbound Verification Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -14,37 +14,40 @@
     <!-- ==================== 1. LEFT SIDEBAR NAVIGATION ==================== -->
     <aside class="sidebar" id="sidebar">
       <div class="brand-header">
-        <div class="brand-logo">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-            <path d="M14.5 2a7.5 7.5 0 0 1 7.5 7.5"/>
-            <path d="M14.5 6a3.5 3.5 0 0 1 3.5 3.5"/>
+        <div class="brand-mark">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 10v3"/>
+            <path d="M6 6v11"/>
+            <path d="M10 3v18"/>
+            <path d="M14 8v7"/>
+            <path d="M18 5v13"/>
+            <path d="M22 10v3"/>
           </svg>
         </div>
         <div class="brand-text">
           <span class="brand-title">Reach AI Voice</span>
-          <span class="brand-subtitle">Outbound Verification Suite</span>
+          <span class="brand-subtitle">Outbound Operations</span>
         </div>
       </div>
 
-      <div class="outbound-mode-pill">
-        <span class="status-dot pulse-emerald"></span>
-        <span>OUTBOUND CALLS ONLY</span>
+      <div class="trunk-mode-bar">
+        <span class="signal-dot"></span>
+        <span class="trunk-mode-text">OUTBOUND TRUNK ONLY</span>
       </div>
 
       <!-- Active Client Workflows Section -->
-      <div class="sidebar-section">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-title">Active Client Workflows</span>
-          <span class="workflow-count-pill" id="sidebarWorkflowCount">2</span>
+      <div class="sidebar-group">
+        <div class="sidebar-group-header">
+          <span class="sidebar-group-label">Active Client Workflows</span>
+          <span class="sidebar-counter" id="sidebarWorkflowCount">2</span>
         </div>
 
         <div class="workflow-list" id="sidebarWorkflowList">
-          <!-- Dynamically populated by app.js (TATA Leads, Healing Earth, + custom workflows) -->
+          <!-- Populated dynamically by app.js -->
         </div>
 
         <button type="button" class="btn-new-workflow" id="btnOpenNewWorkflowModal">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
@@ -52,46 +55,50 @@
         </button>
       </div>
 
-      <div class="sidebar-divider"></div>
-
       <!-- Main Navigation Tabs -->
-      <div class="sidebar-section">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-title">Main Navigation</span>
+      <div class="sidebar-group">
+        <div class="sidebar-group-header">
+          <span class="sidebar-group-label">Workspace Views</span>
         </div>
         <nav class="main-nav" id="mainNavTabs">
           <button type="button" class="nav-tab active" data-view="campaign">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+              <polyline points="16 2 22 2 22 8"/>
+              <line x1="15" y1="9" x2="22" y2="2"/>
             </svg>
             <span>Outbound Campaign</span>
           </button>
 
           <button type="button" class="nav-tab" data-view="trainer">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-              <polyline points="10 9 9 9 8 9"></polyline>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
             </svg>
             <span>Workflow Script Trainer</span>
           </button>
 
           <button type="button" class="nav-tab" data-view="reports">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="20" x2="18" y2="10"></line>
-              <line x1="12" y1="20" x2="12" y2="4"></line>
-              <line x1="6" y1="20" x2="6" y2="14"></line>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="9" y1="21" x2="9" y2="9"></line>
             </svg>
             <span>Verification Reports</span>
             <span class="nav-badge" id="navReportCountBadge">0</span>
           </button>
 
           <button type="button" class="nav-tab" data-view="settings">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" y1="21" x2="4" y2="14"></line>
+              <line x1="4" y1="10" x2="4" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12" y2="3"></line>
+              <line x1="20" y1="21" x2="20" y2="16"></line>
+              <line x1="20" y1="12" x2="20" y2="3"></line>
+              <line x1="1" y1="14" x2="7" y2="14"></line>
+              <line x1="9" y1="8" x2="15" y2="8"></line>
+              <line x1="17" y1="16" x2="23" y2="16"></line>
             </svg>
             <span>Voice Engine Settings</span>
           </button>
@@ -100,23 +107,24 @@
 
       <!-- Sidebar Footer Connection Status -->
       <div class="sidebar-footer">
-        <div class="engine-status-box">
-          <div class="engine-status-row">
+        <div class="telemetry-card">
+          <div class="telemetry-row">
             <span class="status-dot" id="apiConnectionDot"></span>
-            <span class="engine-status-label" id="apiConnectionText">Syncing Backend / Local State</span>
+            <span class="telemetry-title" id="apiConnectionText">Local State Ready</span>
           </div>
-          <div class="engine-status-sub">Reach AI Voice • Tamil + Tanglish + English</div>
+          <div class="telemetry-meta">NLU: ta-IN • Tanglish • en-IN</div>
         </div>
       </div>
     </aside>
 
-    <!-- ==================== MAIN CONTENT AREA ==================== -->
+    <!-- ==================== MAIN WORKSPACE AREA ==================== -->
     <main class="main-workspace">
-      <!-- Top Bar -->
+      <!-- Top Architectural Header Bar -->
       <header class="topbar">
         <div class="topbar-left">
-          <div class="active-workflow-breadcrumb">
-            <span class="breadcrumb-prefix">Active Workflow:</span>
+          <div class="breadcrumb-row">
+            <span class="breadcrumb-root">Workflows</span>
+            <span class="breadcrumb-sep">/</span>
             <span class="workflow-badge" id="topbarWorkflowBadge">TATA Leads Enquiry Verification</span>
           </div>
           <p class="topbar-desc" id="topbarWorkflowDescription">
@@ -125,121 +133,102 @@
         </div>
 
         <div class="topbar-right">
-          <div class="caller-id-chip" id="topbarCallerIdChip">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-            </svg>
-            <span id="topbarCallerIdValue">Dedicated TATA: +91 98765 11111</span>
+          <div class="cli-readout" id="topbarCallerIdChip">
+            <span class="cli-label">ACTIVE CLI</span>
+            <span class="cli-number" id="topbarCallerIdValue">Dedicated TATA: +91 98765 11111</span>
           </div>
-          <button type="button" class="btn-secondary btn-sm" id="btnClearAllData" title="Clear all call report records">
-            Clear All Records
+          <button type="button" class="btn-ghost btn-sm" id="btnClearAllData" title="Clear all call report records">
+            Clear Records
           </button>
         </div>
       </header>
 
-      <!-- ==================== 2. TOP KPI SUMMARY CARDS ==================== -->
-      <section class="kpi-grid" aria-label="Key Performance Indicators">
+      <!-- ==================== 2. TOP KPI SUMMARY LEDGER ==================== -->
+      <section class="kpi-ledger" aria-label="Key Performance Indicators">
         <!-- Card 1: Total Outbound Calls Dialed -->
-        <div class="kpi-card kpi-blue">
-          <div class="kpi-card-top">
-            <span class="kpi-title">Total Outbound Calls Dialed</span>
-            <div class="kpi-icon kpi-icon-blue">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-                <polyline points="17 6 23 6 23 12"></polyline>
-              </svg>
-            </div>
+        <div class="kpi-cell">
+          <div class="kpi-cell-header">
+            <span class="kpi-label">Total Outbound Calls Dialed</span>
+            <span class="kpi-tag" id="kpiScopeLabel">All Workflows</span>
           </div>
-          <div class="kpi-value-row">
-            <span class="kpi-number" id="kpiTotalCalls">0</span>
-            <span class="kpi-pill kpi-pill-blue" id="kpiScopeLabel">All Workflows</span>
+          <div class="kpi-metric-row">
+            <span class="kpi-value" id="kpiTotalCalls">0</span>
           </div>
-          <div class="kpi-subtext">100% Automated Outbound Verification</div>
+          <div class="kpi-foot">Automated outbound verification</div>
         </div>
 
         <!-- Card 2: Q1: Staff Contacted (YES Count & %) -->
-        <div class="kpi-card kpi-emerald">
-          <div class="kpi-card-top">
-            <span class="kpi-title">Q1: Staff Contacted</span>
-            <div class="kpi-icon kpi-icon-emerald">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg>
-            </div>
+        <div class="kpi-cell">
+          <div class="kpi-cell-header">
+            <span class="kpi-label">Q1: Staff Contacted</span>
+            <span class="kpi-tag kpi-tag-positive" id="kpiQ1YesPercent">0% YES</span>
           </div>
-          <div class="kpi-value-row">
-            <span class="kpi-number" id="kpiQ1YesCount">0</span>
-            <span class="kpi-pill kpi-pill-emerald" id="kpiQ1YesPercent">0% YES</span>
+          <div class="kpi-metric-row">
+            <span class="kpi-value" id="kpiQ1YesCount">0</span>
+            <span class="kpi-unit">verified</span>
           </div>
-          <div class="kpi-subtext" id="kpiQ1Subtext">Executive contacted customer</div>
+          <div class="kpi-foot" id="kpiQ1Subtext">0 of 0 confirmed staff contact</div>
         </div>
 
         <!-- Card 3: Q2: Understood & Satisfied (YES Count & %) -->
-        <div class="kpi-card kpi-indigo">
-          <div class="kpi-card-top">
-            <span class="kpi-title">Q2: Understood &amp; Satisfied</span>
-            <div class="kpi-icon kpi-icon-indigo">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                <line x1="9" y1="9" x2="9.01" y2="9"></line>
-                <line x1="15" y1="9" x2="15.01" y2="9"></line>
-              </svg>
-            </div>
+        <div class="kpi-cell">
+          <div class="kpi-cell-header">
+            <span class="kpi-label">Q2: Understood &amp; Satisfied</span>
+            <span class="kpi-tag kpi-tag-positive" id="kpiQ2YesPercent">0% YES</span>
           </div>
-          <div class="kpi-value-row">
-            <span class="kpi-number" id="kpiQ2YesCount">0</span>
-            <span class="kpi-pill kpi-pill-indigo" id="kpiQ2YesPercent">0% YES</span>
+          <div class="kpi-metric-row">
+            <span class="kpi-value" id="kpiQ2YesCount">0</span>
+            <span class="kpi-unit">satisfied</span>
           </div>
-          <div class="kpi-subtext" id="kpiQ2Subtext">Clear explanation &amp; satisfied</div>
+          <div class="kpi-foot" id="kpiQ2Subtext">0 of 0 understood &amp; satisfied</div>
         </div>
 
         <!-- Card 4: Pending / Needs Follow-Up (NO Count) -->
-        <div class="kpi-card kpi-rose">
-          <div class="kpi-card-top">
-            <span class="kpi-title">Pending / Needs Follow-Up</span>
-            <div class="kpi-icon kpi-icon-rose">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
-            </div>
+        <div class="kpi-cell">
+          <div class="kpi-cell-header">
+            <span class="kpi-label">Pending / Needs Follow-Up</span>
+            <span class="kpi-tag kpi-tag-negative" id="kpiPendingNoBadge">0 NO (0%)</span>
           </div>
-          <div class="kpi-value-row">
-            <span class="kpi-number" id="kpiPendingNoCount">0</span>
-            <span class="kpi-pill kpi-pill-rose" id="kpiPendingNoBadge">NO Count</span>
+          <div class="kpi-metric-row">
+            <span class="kpi-value kpi-value-alert" id="kpiPendingNoCount">0</span>
+            <span class="kpi-unit">flagged</span>
           </div>
-          <div class="kpi-subtext">Q1 NO or Q2 NO — Escalate to Team</div>
+          <div class="kpi-foot">Q1 NO or Q2 NO — requires escalation</div>
         </div>
       </section>
 
       <!-- ==================== 3. OUTBOUND CAMPAIGN LAUNCHER VIEW ==================== -->
       <section class="view-section active" id="view-campaign">
         <!-- Configuration Row with 3 Dropdowns -->
-        <div class="panel config-bar-panel">
-          <div class="panel-header-inline">
-            <div>
-              <h2 class="panel-title">Outbound Campaign Configuration</h2>
-              <p class="panel-subtitle">Select workflow routing, dedicated caller ID, and regional voice synthesis model before dialing.</p>
+        <div class="surface-panel">
+          <div class="panel-bar">
+            <div class="panel-bar-titles">
+              <h2 class="panel-heading">Campaign Routing &amp; Voice Parameters</h2>
+              <span class="panel-caption">Select active client workflow, outbound CLI trunk, and neural voice synthesis model.</span>
             </div>
-            <span class="tag-outbound">Reach AI Voice Trunk Ready</span>
+            <div class="trunk-status-chip">
+              <span class="signal-dot"></span>
+              <span>SIP Trunk Ready</span>
+            </div>
           </div>
 
-          <div class="config-dropdowns-grid">
+          <div class="routing-grid">
             <!-- a) Workflow Selector (Synced with Sidebar) -->
-            <div class="form-group">
-              <label for="workflowSelect">1. Active Client Workflow (Synced)</label>
-              <select id="workflowSelect" class="form-select">
+            <div class="field-block">
+              <label for="workflowSelect" class="field-label">
+                <span class="field-index">01</span> Client Workflow
+              </label>
+              <select id="workflowSelect" class="field-select">
                 <!-- Populated dynamically -->
               </select>
             </div>
 
             <!-- b) Phone Number / Caller ID Routing -->
-            <div class="form-group">
-              <label for="callerIdSelect">2. Phone Number / Caller ID Routing</label>
-              <select id="callerIdSelect" class="form-select">
+            <div class="field-block">
+              <label for="callerIdSelect" class="field-label">
+                <span class="field-index">02</span> Outbound Caller ID (CLI)
+              </label>
+              <select id="callerIdSelect" class="field-select">
                 <option value="Shared Pool: +91 98765 00000">Shared Pool: +91 98765 00000</option>
                 <option value="Dedicated TATA: +91 98765 11111">Dedicated TATA: +91 98765 11111</option>
                 <option value="Dedicated Healing Earth: +91 98765 22222">Dedicated Healing Earth: +91 98765 22222</option>
@@ -247,9 +236,11 @@
             </div>
 
             <!-- c) Voice Model Selector -->
-            <div class="form-group">
-              <label for="voiceModelSelect">3. Voice Model Selector</label>
-              <select id="voiceModelSelect" class="form-select">
+            <div class="field-block">
+              <label for="voiceModelSelect" class="field-label">
+                <span class="field-index">03</span> Neural Voice Model
+              </label>
+              <select id="voiceModelSelect" class="field-select">
                 <option value="Tamil Female (Pallavi HD)">Tamil Female (Pallavi HD)</option>
                 <option value="Tamil Male (Valluvar HD)">Tamil Male (Valluvar HD)</option>
                 <option value="Indian English Female (Neerja HD)">Indian English Female (Neerja HD)</option>
@@ -260,161 +251,158 @@
         </div>
 
         <!-- Two-Column Dialer + Bulk Campaign Grid -->
-        <div class="campaign-grid">
+        <div class="launcher-split">
           <!-- Single Number Dialer Card -->
-          <div class="panel dialer-card">
-            <div class="card-header">
-              <div class="card-header-left">
-                <span class="card-icon icon-indigo">📞</span>
-                <div>
-                  <h3 class="card-title">Single Number Outbound Dialer</h3>
-                  <p class="card-subtitle">Trigger an immediate outbound verification call to an individual lead</p>
-                </div>
+          <div class="surface-panel">
+            <div class="panel-bar">
+              <div class="panel-bar-titles">
+                <h3 class="panel-heading">Single Number Outbound Dialer</h3>
+                <span class="panel-caption">Dispatch an immediate outbound verification call to an individual lead</span>
               </div>
-              <label class="tts-toggle-label" title="Speak AI script aloud using browser TTS during simulation">
+              <label class="audio-switch" title="Speak AI script aloud using browser TTS">
                 <input type="checkbox" id="chkSpeakAudio" checked />
-                <span>🔊 Live Audio</span>
+                <span class="audio-switch-text">TTS Audio</span>
               </label>
             </div>
 
-            <form id="singleDialForm" class="dialer-form">
-              <div class="form-group">
-                <label for="singleCustomerName">Customer Name <span class="req">*</span></label>
+            <form id="singleDialForm" class="stack-form">
+              <div class="field-block">
+                <label for="singleCustomerName" class="field-label">Customer Name <span class="req">*</span></label>
                 <input
                   type="text"
                   id="singleCustomerName"
-                  class="form-input"
+                  class="field-input"
                   placeholder="Enter customer full name"
                   required
                 />
               </div>
 
-              <div class="form-row-2">
-                <div class="form-group">
-                  <label for="singlePhoneNumber">Phone Number <span class="req">*</span></label>
+              <div class="field-row-2">
+                <div class="field-block">
+                  <label for="singlePhoneNumber" class="field-label">Phone Number <span class="req">*</span></label>
                   <input
                     type="tel"
                     id="singlePhoneNumber"
-                    class="form-input"
-                    placeholder="Enter phone number (e.g., +91 98765 43210)"
+                    class="field-input font-mono"
+                    placeholder="+91 98765 43210"
                     required
                   />
                 </div>
 
-                <div class="form-group">
-                  <label for="singleEnquiryItem" id="lblSingleEnquiryItem">Vehicle / Service Name <span class="req">*</span></label>
+                <div class="field-block">
+                  <label for="singleEnquiryItem" id="lblSingleEnquiryItem" class="field-label">Vehicle / Service Name <span class="req">*</span></label>
                   <input
                     type="text"
                     id="singleEnquiryItem"
-                    class="form-input"
-                    placeholder="Enter vehicle model or service enquired"
+                    class="field-input"
+                    placeholder="Enter vehicle model or service"
                     required
                   />
                 </div>
               </div>
 
-              <!-- Simulated Customer Response Selector -->
-              <div class="form-group">
-                <label for="singleSimulatedOutcome">Simulated Customer Response Mode (For Live Demo &amp; Testing)</label>
-                <select id="singleSimulatedOutcome" class="form-select">
-                  <option value="positive">Customer Answers: Q1 YES (Contacted) &amp; Q2 YES (Satisfied - Tamil/Tanglish)</option>
-                  <option value="partial_no">Customer Answers: Q1 YES (Contacted) &amp; Q2 NO (Not Satisfied / Needs Callback)</option>
-                  <option value="full_no">Customer Answers: Q1 NO (Nobody Contacted Yet) &amp; Q2 NO</option>
-                  <option value="custom">Custom Spoken Transcript (Type below)</option>
+              <div class="field-block">
+                <label for="singleSimulatedOutcome" class="field-label">Customer Response Simulation Mode</label>
+                <select id="singleSimulatedOutcome" class="field-select">
+                  <option value="positive">Q1 YES (Contacted) &amp; Q2 YES (Understood &amp; Satisfied)</option>
+                  <option value="partial_no">Q1 YES (Contacted) &amp; Q2 NO (Not Satisfied / Follow-Up)</option>
+                  <option value="full_no">Q1 NO (Not Contacted Yet) &amp; Q2 NO</option>
+                  <option value="custom">Custom Spoken Response (Enter transcript below)</option>
                 </select>
               </div>
 
-              <div class="form-group hidden" id="customTranscriptGroup">
-                <label for="singleCustomTranscript">Custom Customer Spoken Response (Tamil / Tanglish / English)</label>
+              <div class="field-block hidden" id="customTranscriptGroup">
+                <label for="singleCustomTranscript" class="field-label">Custom Customer Utterance (Tamil / Tanglish / English)</label>
                 <input
                   type="text"
                   id="singleCustomTranscript"
-                  class="form-input"
+                  class="field-input"
                   placeholder="e.g., ஆமா கால் பண்ணாங்க, ஆனா EMI details சரியா சொல்லல"
                 />
               </div>
 
-              <div class="dialer-actions">
-                <button type="submit" class="btn-primary btn-dial-now" id="btnDialNow">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-                  </svg>
-                  <span>Dial Now</span>
-                </button>
-              </div>
+              <button type="submit" class="btn-solid btn-full" id="btnDialNow">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+                <span>Dial Now</span>
+              </button>
             </form>
 
-            <!-- Live Outbound Call Progress Monitor -->
-            <div class="live-call-monitor" id="singleCallMonitor">
-              <div class="monitor-header">
-                <span class="monitor-status-badge" id="singleCallStatusBadge">READY TO DIAL</span>
-                <span class="monitor-timer" id="singleCallTimer">00:00</span>
+            <!-- Live Outbound Call Telemetry Console -->
+            <div class="call-console" id="singleCallMonitor">
+              <div class="console-top">
+                <span class="console-state" id="singleCallStatusBadge">IDLE • STANDBY</span>
+                <span class="console-clock" id="singleCallTimer">00:00</span>
               </div>
-              <div class="monitor-steps" id="singleCallSteps">
-                <div class="step-pill" data-step="1">1. Greeting</div>
-                <div class="step-pill" data-step="2">2. Q1 Contacted?</div>
-                <div class="step-pill" data-step="3">3. Q2 Satisfied?</div>
-                <div class="step-pill" data-step="4">4. Logged</div>
+              <div class="console-pipeline" id="singleCallSteps">
+                <div class="step-pill" data-step="1"><span>01</span> Greeting</div>
+                <div class="step-pill" data-step="2"><span>02</span> Q1 Contact</div>
+                <div class="step-pill" data-step="3"><span>03</span> Q2 Satisfied</div>
+                <div class="step-pill" data-step="4"><span>04</span> Logged</div>
               </div>
-              <div class="monitor-transcript-box" id="singleCallLiveFeed">
-                Click <strong>Dial Now</strong> to initiate a live outbound call via <span id="monitorCallerIdPreview">Dedicated TATA: +91 98765 11111</span>.
+              <div class="console-log" id="singleCallLiveFeed">
+                Ready to dispatch outbound call via <span class="font-mono" id="monitorCallerIdPreview">Dedicated TATA: +91 98765 11111</span>.
               </div>
             </div>
           </div>
 
           <!-- Bulk CSV / Excel Upload Card -->
-          <div class="panel bulk-card">
-            <div class="card-header">
-              <div class="card-header-left">
-                <span class="card-icon icon-emerald">📂</span>
-                <div>
-                  <h3 class="card-title">Bulk CSV / Excel Outbound Campaign</h3>
-                  <p class="card-subtitle">Upload lead sheets (Columns: <code>Name, Phone, Vehicle/Service</code>) for automated batch dialing</p>
-                </div>
+          <div class="surface-panel">
+            <div class="panel-bar">
+              <div class="panel-bar-titles">
+                <h3 class="panel-heading">Bulk CSV / Excel Campaign Batch</h3>
+                <span class="panel-caption">Upload lead sheet (<code>Name, Phone, Vehicle/Service</code>) for automated batch dialing</span>
               </div>
-              <div class="bulk-sample-actions">
-                <button type="button" class="btn-outline-xs" id="btnDownloadTemplateCsv">Download CSV Template</button>
-              </div>
+              <button type="button" class="btn-ghost btn-xs" id="btnDownloadTemplateCsv">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                <span>CSV Template</span>
+              </button>
             </div>
 
             <!-- Drag and Drop Zone -->
-            <div class="dropzone" id="csvDropzone">
+            <div class="upload-zone" id="csvDropzone">
               <input type="file" id="csvFileInput" accept=".csv,.txt,.tsv" class="hidden-file-input" />
-              <div class="dropzone-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="17 8 12 3 7 8"></polyline>
-                  <line x1="12" y1="3" x2="12" y2="15"></line>
+              <div class="upload-icon-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="12" y1="18" x2="12" y2="12"></line>
+                  <polyline points="9 15 12 12 15 15"></polyline>
                 </svg>
               </div>
-              <div class="dropzone-title">Drag &amp; drop CSV / Excel (.csv) file here, or <span class="dropzone-link">browse file</span></div>
-              <div class="dropzone-hint">Required columns: <strong>Name, Phone, Vehicle/Service</strong></div>
+              <div class="upload-title">Drop CSV file here or <span class="upload-Trigger">browse local disk</span></div>
+              <div class="upload-meta">Columns: <code>Name, Phone, Vehicle/Service</code> • UTF-8 CSV</div>
             </div>
 
             <!-- Parsed Leads Preview & Count -->
-            <div class="bulk-preview-box">
-              <div class="bulk-preview-header">
-                <span class="bulk-preview-title">Queue Preview: <strong id="bulkLeadCount">0</strong> leads ready to dial</span>
-                <button type="button" class="btn-text-danger" id="btnClearBulkQueue">Clear Queue</button>
+            <div class="queue-box">
+              <div class="queue-header">
+                <span class="queue-title">Staged Queue (<strong id="bulkLeadCount">0</strong> leads)</span>
+                <button type="button" class="btn-link-muted" id="btnClearBulkQueue">Clear</button>
               </div>
-              <div class="bulk-preview-list" id="bulkPreviewList">
-                <div class="empty-preview-msg">No CSV file uploaded. Drag &amp; drop a CSV file above to load leads.</div>
+              <div class="queue-list" id="bulkPreviewList">
+                <div class="empty-preview-msg">No CSV file uploaded. Drag &amp; drop a CSV file above to stage leads.</div>
               </div>
             </div>
 
             <!-- Live Campaign Progress Bar -->
-            <div class="bulk-progress-wrapper" id="bulkProgressWrapper">
-              <div class="bulk-progress-labels">
-                <span id="bulkProgressStatusText">Campaign Idle</span>
-                <span id="bulkProgressStatsText">0 / 0 Dialed (0%)</span>
+            <div class="campaign-progress" id="bulkProgressWrapper">
+              <div class="progress-meta">
+                <span id="bulkProgressStatusText">Batch Idle</span>
+                <span class="font-mono" id="bulkProgressStatsText">0 / 0 Dialed (0%)</span>
               </div>
-              <div class="progress-track">
-                <div class="progress-fill" id="bulkProgressBarFill" style="width: 0%"></div>
+              <div class="progress-rail">
+                <div class="progress-bar" id="bulkProgressBarFill" style="width: 0%"></div>
               </div>
             </div>
 
-            <button type="button" class="btn-emerald btn-bulk-start" id="btnStartBulkCampaign">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <button type="button" class="btn-teal btn-full" id="btnStartBulkCampaign">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="5 3 19 12 5 21 5 3"></polygon>
               </svg>
               <span>Start Bulk Outbound Campaign</span>
@@ -425,18 +413,18 @@
 
       <!-- ==================== 4. 3-STEP WORKFLOW SCRIPT & INTENT TRAINER VIEW ==================== -->
       <section class="view-section" id="view-trainer">
-        <div class="panel trainer-top-panel">
-          <div class="trainer-header-bar">
-            <div>
-              <h2 class="panel-title">3-Step Workflow Script &amp; Intent Trainer</h2>
-              <p class="panel-subtitle">
-                Configure bilingual outbound voice scripts (<code>{customer_name}</code>, <code>{enquiry_item}</code>) and Tamil / Tanglish / English NLU keyword classifiers.
-              </p>
+        <div class="surface-panel">
+          <div class="panel-bar">
+            <div class="panel-bar-titles">
+              <h2 class="panel-heading">3-Step Workflow Script &amp; NLU Intent Trainer</h2>
+              <span class="panel-caption">
+                Configure bilingual voice prompts (<code>{customer_name}</code>, <code>{enquiry_item}</code>) and Tamil / Tanglish / English classification keywords.
+              </span>
             </div>
-            <div class="trainer-header-controls">
-              <select id="trainerWorkflowSelect" class="form-select"></select>
-              <button type="button" class="btn-primary" id="btnSaveWorkflowConfig">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <div class="trainer-controls">
+              <select id="trainerWorkflowSelect" class="field-select"></select>
+              <button type="button" class="btn-solid" id="btnSaveWorkflowConfig">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                   <polyline points="17 21 17 13 7 13 7 21"></polyline>
                   <polyline points="7 3 7 8 15 8"></polyline>
@@ -447,116 +435,116 @@
           </div>
         </div>
 
-        <div class="trainer-steps-grid">
+        <div class="trainer-grid">
           <!-- STEP 1: Greeting & Enquiry Confirmation -->
-          <div class="panel step-card">
-            <div class="step-card-header">
-              <span class="step-number-badge step-badge-1">STEP 1</span>
+          <div class="surface-panel step-panel">
+            <div class="step-header">
+              <span class="step-index">STEP 01</span>
               <div>
-                <h3 class="card-title">Greeting &amp; Enquiry Confirmation</h3>
-                <p class="card-subtitle">Bilingual greeting template with dynamic variables <code>{customer_name}</code> &amp; <code>{enquiry_item}</code></p>
+                <h3 class="panel-heading">Greeting &amp; Enquiry Confirmation</h3>
+                <span class="panel-caption">Bilingual template with dynamic tokens</span>
               </div>
             </div>
 
-            <div class="form-group">
-              <label for="step1ScriptInput">Spoken Greeting Script (Tamil + English)</label>
-              <textarea id="step1ScriptInput" class="form-textarea" rows="4"></textarea>
+            <div class="field-block">
+              <label for="step1ScriptInput" class="field-label">Spoken Script (Tamil + English)</label>
+              <textarea id="step1ScriptInput" class="field-textarea" rows="4"></textarea>
             </div>
 
-            <div class="variable-chips-row">
-              <span class="var-hint">Click to insert placeholder:</span>
-              <button type="button" class="chip-btn" data-insert="{customer_name}">+ {customer_name}</button>
-              <button type="button" class="chip-btn" data-insert="{enquiry_item}">+ {enquiry_item}</button>
+            <div class="token-bar">
+              <span class="token-label">Insert token:</span>
+              <button type="button" class="chip-btn" data-insert="{customer_name}">{customer_name}</button>
+              <button type="button" class="chip-btn" data-insert="{enquiry_item}">{enquiry_item}</button>
             </div>
 
-            <div class="live-script-preview">
-              <div class="preview-label">Live Rendered Greeting Preview:</div>
-              <div class="preview-content" id="step1LivePreview"></div>
+            <div class="script-preview-box">
+              <div class="script-preview-title">Rendered Output Preview</div>
+              <div class="script-preview-body" id="step1LivePreview"></div>
             </div>
           </div>
 
           <!-- STEP 2: Q1 — Staff Contacted? -->
-          <div class="panel step-card">
-            <div class="step-card-header">
-              <span class="step-number-badge step-badge-2">STEP 2 • Q1</span>
+          <div class="surface-panel step-panel">
+            <div class="step-header">
+              <span class="step-index">STEP 02 • Q1</span>
               <div>
-                <h3 class="card-title">Q1 — Staff Contacted Verification</h3>
-                <p class="card-subtitle">Asks if our executive/specialist contacted the customer regarding their enquiry</p>
+                <h3 class="panel-heading">Q1 — Staff Contacted Verification</h3>
+                <span class="panel-caption">Confirms whether an executive contacted the lead</span>
               </div>
             </div>
 
-            <div class="form-group">
-              <label for="step2ScriptInput">Q1 Spoken Question Script</label>
-              <textarea id="step2ScriptInput" class="form-textarea" rows="3"></textarea>
+            <div class="field-block">
+              <label for="step2ScriptInput" class="field-label">Q1 Spoken Prompt</label>
+              <textarea id="step2ScriptInput" class="field-textarea" rows="3"></textarea>
             </div>
 
-            <div class="keywords-grid-2">
-              <div class="form-group">
-                <label for="q1YesKeywords" class="kw-label-yes">
-                  <span class="badge-yes-dot"></span> Positive (YES) Keywords (Tamil, Tanglish, English)
+            <div class="kw-stack">
+              <div class="field-block">
+                <label for="q1YesKeywords" class="field-label kw-positive-label">
+                  <span class="dot-positive"></span> Positive (YES) Keywords (Tamil, Tanglish, English)
                 </label>
-                <textarea id="q1YesKeywords" class="form-textarea kw-textarea-yes" rows="3" placeholder="Comma-separated YES keywords"></textarea>
+                <textarea id="q1YesKeywords" class="field-textarea kw-box-positive" rows="3"></textarea>
               </div>
 
-              <div class="form-group">
-                <label for="q1NoKeywords" class="kw-label-no">
-                  <span class="badge-no-dot"></span> Negative (NO) Keywords (Tamil, Tanglish, English)
+              <div class="field-block">
+                <label for="q1NoKeywords" class="field-label kw-negative-label">
+                  <span class="dot-negative"></span> Negative (NO) Keywords (Tamil, Tanglish, English)
                 </label>
-                <textarea id="q1NoKeywords" class="form-textarea kw-textarea-no" rows="3" placeholder="Comma-separated NO keywords"></textarea>
+                <textarea id="q1NoKeywords" class="field-textarea kw-box-negative" rows="3"></textarea>
               </div>
             </div>
           </div>
 
           <!-- STEP 3: Q2 — Understood & Satisfied? -->
-          <div class="panel step-card">
-            <div class="step-card-header">
-              <span class="step-number-badge step-badge-3">STEP 3 • Q2</span>
+          <div class="surface-panel step-panel">
+            <div class="step-header">
+              <span class="step-index">STEP 03 • Q2</span>
               <div>
-                <h3 class="card-title">Q2 — Understood &amp; Satisfied Verification</h3>
-                <p class="card-subtitle">Verifies whether the customer understood the details clearly and is satisfied</p>
+                <h3 class="panel-heading">Q2 — Understood &amp; Satisfied</h3>
+                <span class="panel-caption">Verifies clarity of explanation and customer satisfaction</span>
               </div>
             </div>
 
-            <div class="form-group">
-              <label for="step3ScriptInput">Q2 Spoken Question Script</label>
-              <textarea id="step3ScriptInput" class="form-textarea" rows="3"></textarea>
+            <div class="field-block">
+              <label for="step3ScriptInput" class="field-label">Q2 Spoken Prompt</label>
+              <textarea id="step3ScriptInput" class="field-textarea" rows="3"></textarea>
             </div>
 
-            <div class="keywords-grid-2">
-              <div class="form-group">
-                <label for="q2YesKeywords" class="kw-label-yes">
-                  <span class="badge-yes-dot"></span> Positive (YES) Keywords (Tamil, Tanglish, English)
+            <div class="kw-stack">
+              <div class="field-block">
+                <label for="q2YesKeywords" class="field-label kw-positive-label">
+                  <span class="dot-positive"></span> Positive (YES) Keywords (Tamil, Tanglish, English)
                 </label>
-                <textarea id="q2YesKeywords" class="form-textarea kw-textarea-yes" rows="3" placeholder="Comma-separated YES keywords"></textarea>
+                <textarea id="q2YesKeywords" class="field-textarea kw-box-positive" rows="3"></textarea>
               </div>
 
-              <div class="form-group">
-                <label for="q2NoKeywords" class="kw-label-no">
-                  <span class="badge-no-dot"></span> Negative (NO) Keywords (Tamil, Tanglish, English)
+              <div class="field-block">
+                <label for="q2NoKeywords" class="field-label kw-negative-label">
+                  <span class="dot-negative"></span> Negative (NO) Keywords (Tamil, Tanglish, English)
                 </label>
-                <textarea id="q2NoKeywords" class="form-textarea kw-textarea-no" rows="3" placeholder="Comma-separated NO keywords"></textarea>
+                <textarea id="q2NoKeywords" class="field-textarea kw-box-negative" rows="3"></textarea>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Interactive Intent Classifier Sandbox -->
-        <div class="panel intent-tester-panel">
-          <div class="intent-tester-header">
-            <div>
-              <h3 class="card-title">Live Tamil / Tanglish / English Intent Classifier Tester</h3>
-              <p class="card-subtitle">Test how customer speech transcripts map to Q1 &amp; Q2 YES/NO badges using your configured keywords.</p>
+        <div class="surface-panel">
+          <div class="panel-bar">
+            <div class="panel-bar-titles">
+              <h3 class="panel-heading">NLU Utterance Classifier Sandbox</h3>
+              <span class="panel-caption">Test how spoken customer responses resolve to Q1 &amp; Q2 verification states.</span>
             </div>
           </div>
-          <div class="intent-tester-row">
+          <div class="sandbox-bar">
             <input
               type="text"
               id="intentTestInput"
-              class="form-input"
-              placeholder="Type a Tamil, Tanglish, or English customer response to test..."
+              class="field-input"
+              placeholder="Type a Tamil, Tanglish, or English customer response to test classification..."
             />
-            <button type="button" class="btn-secondary" id="btnRunIntentTest">Test Intent Detection</button>
-            <div class="intent-test-results" id="intentTestResults">
+            <button type="button" class="btn-ghost" id="btnRunIntentTest">Evaluate Utterance</button>
+            <div class="sandbox-output" id="intentTestResults">
               <span>Q1: <strong>—</strong></span>
               <span>Q2: <strong>—</strong></span>
             </div>
@@ -567,24 +555,28 @@
       <!-- ==================== 5. CLIENT-WISE VERIFICATION REPORT TABLE ==================== -->
       <section class="view-section" id="view-reports"></section>
 
-      <section class="panel reports-section-panel" id="reportsContainerSection">
-        <div class="reports-header-bar">
-          <div>
-            <h2 class="panel-title">Client-Wise Outbound Verification Report</h2>
-            <p class="panel-subtitle">Real-time outbound call outcomes, Q1/Q2 verification badges, and customer spoken transcripts.</p>
+      <section class="surface-panel reports-panel" id="reportsContainerSection">
+        <div class="panel-bar">
+          <div class="panel-bar-titles">
+            <h2 class="panel-heading">Client-Wise Verification Ledger</h2>
+            <span class="panel-caption">Structured outbound call logs, Q1/Q2 verification outcomes, and verbatim customer transcripts.</span>
           </div>
 
-          <div class="reports-actions-right">
-            <div class="search-box">
+          <div class="reports-toolbar">
+            <div class="search-field-wrap">
+              <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
               <input
                 type="search"
                 id="reportSearchInput"
-                class="form-input form-input-sm"
-                placeholder="Search customer, phone, vehicle/service, transcript..."
+                class="field-input search-input"
+                placeholder="Filter by customer, phone, item, transcript..."
               />
             </div>
-            <button type="button" class="btn-emerald btn-export-csv" id="btnExportCsv">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <button type="button" class="btn-solid btn-sm" id="btnExportCsv">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -595,7 +587,7 @@
         </div>
 
         <!-- Filter Tabs -->
-        <div class="report-filter-tabs" id="reportFilterTabs">
+        <div class="segmented-tabs" id="reportFilterTabs">
           <button type="button" class="filter-tab active" data-filter="ALL">
             All Workflows <span class="tab-count" id="countFilterAll">0</span>
           </button>
@@ -611,18 +603,18 @@
         </div>
 
         <!-- Exact 8-Column Verification Table -->
-        <div class="table-responsive">
-          <table class="verification-table" id="verificationReportTable">
+        <div class="table-container">
+          <table class="data-table" id="verificationReportTable">
             <thead>
               <tr>
-                <th>1. Date &amp; Time</th>
-                <th>2. Workflow Name</th>
-                <th>3. Dialed From Number</th>
-                <th>4. Customer Name &amp; Phone</th>
-                <th>5. Enquiry Item</th>
-                <th>6. Q1: Staff Contacted</th>
-                <th>7. Q2: Understood &amp; Satisfied</th>
-                <th>8. Customer Spoken Transcript / Remark</th>
+                <th>Date &amp; Time</th>
+                <th>Workflow Name</th>
+                <th>Dialed From Number</th>
+                <th>Customer Name &amp; Phone</th>
+                <th>Enquiry Item</th>
+                <th>Q1: Staff Contacted</th>
+                <th>Q2: Understood &amp; Satisfied</th>
+                <th>Customer Spoken Transcript / Remark</th>
               </tr>
             </thead>
             <tbody id="verificationReportTbody">
@@ -634,20 +626,20 @@
 
       <!-- ==================== VOICE ENGINE SETTINGS VIEW ==================== -->
       <section class="view-section" id="view-settings">
-        <div class="panel">
-          <div class="panel-header-inline">
-            <div>
-              <h2 class="panel-title">Reach AI Voice Engine &amp; Telephony Trunk Settings</h2>
-              <p class="panel-subtitle">Configure Tamil / Indian English TTS synthesis parameters, ONNX offline fallback, and outbound SIP caller IDs.</p>
+        <div class="surface-panel">
+          <div class="panel-bar">
+            <div class="panel-bar-titles">
+              <h2 class="panel-heading">Reach AI Voice Engine &amp; Telephony Trunk</h2>
+              <span class="panel-caption">Configure neural TTS synthesis parameters, offline ONNX fallback, and outbound SIP caller IDs.</span>
             </div>
           </div>
 
-          <div class="settings-grid">
-            <div class="settings-card">
-              <h3 class="card-title">Regional Speech Synthesis (TTS)</h3>
-              <div class="form-group">
-                <label for="settingDefaultVoice">Default Outbound Voice Model</label>
-                <select id="settingDefaultVoice" class="form-select">
+          <div class="settings-split">
+            <div class="settings-box">
+              <h3 class="panel-heading">Regional Speech Synthesis (TTS)</h3>
+              <div class="field-block">
+                <label for="settingDefaultVoice" class="field-label">Default Outbound Voice Model</label>
+                <select id="settingDefaultVoice" class="field-select">
                   <option value="Tamil Female (Pallavi HD)">Tamil Female (Pallavi HD)</option>
                   <option value="Tamil Male (Valluvar HD)">Tamil Male (Valluvar HD)</option>
                   <option value="Indian English Female (Neerja HD)">Indian English Female (Neerja HD)</option>
@@ -655,36 +647,48 @@
                 </select>
               </div>
 
-              <div class="form-row-2">
-                <div class="form-group">
-                  <label for="settingSpeechRate">Speaking Rate (<span id="lblSpeechRateVal">1.0x</span>)</label>
-                  <input type="range" id="settingSpeechRate" min="0.75" max="1.35" step="0.05" value="1.0" class="form-range" />
+              <div class="field-row-2">
+                <div class="field-block">
+                  <label for="settingSpeechRate" class="field-label">Speaking Rate (<span class="font-mono" id="lblSpeechRateVal">1.00x</span>)</label>
+                  <input type="range" id="settingSpeechRate" min="0.75" max="1.35" step="0.05" value="1.0" class="field-range" />
                 </div>
-                <div class="form-group">
-                  <label for="settingSpeechPitch">Voice Pitch (<span id="lblSpeechPitchVal">1.0</span>)</label>
-                  <input type="range" id="settingSpeechPitch" min="0.8" max="1.2" step="0.05" value="1.0" class="form-range" />
+                <div class="field-block">
+                  <label for="settingSpeechPitch" class="field-label">Voice Pitch (<span class="font-mono" id="lblSpeechPitchVal">1.00</span>)</label>
+                  <input type="range" id="settingSpeechPitch" min="0.8" max="1.2" step="0.05" value="1.0" class="field-range" />
                 </div>
               </div>
 
-              <button type="button" class="btn-secondary" id="btnTestVoiceEngine">
-                🔊 Test Tamil + English Voice Sample
+              <button type="button" class="btn-ghost" id="btnTestVoiceEngine">
+                Synthesize Test Prompt
               </button>
             </div>
 
-            <div class="settings-card">
-              <h3 class="card-title">Outbound Caller ID Pool &amp; Trunk</h3>
-              <div class="form-group">
-                <label>Configured Outbound CLI Numbers</label>
-                <ul class="cli-list">
-                  <li><strong>Shared Pool:</strong> +91 98765 00000 <span class="cli-status">Active</span></li>
-                  <li><strong>Dedicated TATA:</strong> +91 98765 11111 <span class="cli-status">Active</span></li>
-                  <li><strong>Dedicated Healing Earth:</strong> +91 98765 22222 <span class="cli-status">Active</span></li>
+            <div class="settings-box">
+              <h3 class="panel-heading">Outbound CLI Routing Pool</h3>
+              <div class="field-block">
+                <label class="field-label">Provisioned Outbound Numbers</label>
+                <ul class="trunk-list">
+                  <li>
+                    <span>Shared Pool</span>
+                    <span class="font-mono">+91 98765 00000</span>
+                    <span class="trunk-badge">ONLINE</span>
+                  </li>
+                  <li>
+                    <span>Dedicated TATA</span>
+                    <span class="font-mono">+91 98765 11111</span>
+                    <span class="trunk-badge">ONLINE</span>
+                  </li>
+                  <li>
+                    <span>Dedicated Healing Earth</span>
+                    <span class="font-mono">+91 98765 22222</span>
+                    <span class="trunk-badge">ONLINE</span>
+                  </li>
                 </ul>
               </div>
-              <div class="form-group">
-                <label>Call Direction Policy</label>
-                <div class="policy-banner">
-                  🔒 <strong>Strict Outbound-Only Mode Enabled:</strong> Inbound call reception is disabled at the trunk level per Reach AI Voice specification.
+              <div class="field-block">
+                <label class="field-label">Direction Enforcement</label>
+                <div class="direction-notice">
+                  Strict Outbound-Only Trunk Policy active. Inbound call reception is disabled at the SIP gateway level.
                 </div>
               </div>
             </div>
@@ -699,74 +703,74 @@
     <div class="modal-dialog" role="dialog" aria-labelledby="modalNewWorkflowTitle" aria-modal="true">
       <div class="modal-header">
         <div>
-          <h3 class="modal-title" id="modalNewWorkflowTitle">+ Add New Outbound Client Workflow</h3>
-          <p class="modal-subtitle">Create a new dedicated client verification workflow with 3-step bilingual scripts.</p>
+          <h3 class="modal-title" id="modalNewWorkflowTitle">New Outbound Client Workflow</h3>
+          <p class="modal-subtitle">Provision a dedicated client verification workflow with 3-step bilingual prompts.</p>
         </div>
         <button type="button" class="modal-close-btn" id="btnCloseNewWorkflowModal" aria-label="Close">&times;</button>
       </div>
 
       <form id="newWorkflowForm" class="modal-body">
-        <div class="form-row-2">
-          <div class="form-group">
-            <label for="newWfName">Full Workflow Name <span class="req">*</span></label>
+        <div class="field-row-2">
+          <div class="field-block">
+            <label for="newWfName" class="field-label">Full Workflow Name <span class="req">*</span></label>
             <input
               type="text"
               id="newWfName"
-              class="form-input"
+              class="field-input"
               placeholder="e.g., Mahindra SUV Test-Drive Verification"
               required
             />
           </div>
-          <div class="form-group">
-            <label for="newWfShortName">Sidebar Short Name <span class="req">*</span></label>
+          <div class="field-block">
+            <label for="newWfShortName" class="field-label">Sidebar Short Label <span class="req">*</span></label>
             <input
               type="text"
               id="newWfShortName"
-              class="form-input"
+              class="field-input"
               placeholder="e.g., Mahindra Leads"
               required
             />
           </div>
         </div>
 
-        <div class="form-row-2">
-          <div class="form-group">
-            <label for="newWfCallerId">Default Caller ID Routing</label>
-            <select id="newWfCallerId" class="form-select">
+        <div class="field-row-2">
+          <div class="field-block">
+            <label for="newWfCallerId" class="field-label">Default Outbound CLI</label>
+            <select id="newWfCallerId" class="field-select">
               <option value="Shared Pool: +91 98765 00000">Shared Pool: +91 98765 00000</option>
               <option value="Dedicated TATA: +91 98765 11111">Dedicated TATA: +91 98765 11111</option>
               <option value="Dedicated Healing Earth: +91 98765 22222">Dedicated Healing Earth: +91 98765 22222</option>
             </select>
           </div>
-          <div class="form-group">
-            <label for="newWfBadgeColor">Workflow Badge Theme</label>
-            <select id="newWfBadgeColor" class="form-select">
-              <option value="blue">Royal Blue (Automotive / Enterprise)</option>
-              <option value="emerald">Emerald Green (Healthcare / Ayurveda)</option>
-              <option value="purple">Violet Indigo (Real Estate / Finance)</option>
-              <option value="amber">Warm Amber (Retail / Hospitality)</option>
+          <div class="field-block">
+            <label for="newWfBadgeColor" class="field-label">Identifier Accent</label>
+            <select id="newWfBadgeColor" class="field-select">
+              <option value="blue">Slate Blue</option>
+              <option value="emerald">Teal Emerald</option>
+              <option value="purple">Indigo</option>
+              <option value="amber">Amber Ochre</option>
             </select>
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="newWfStep1">Step 1: Greeting &amp; Enquiry Confirmation Script</label>
-          <textarea id="newWfStep1" class="form-textarea" rows="2" required>வணக்கம் {customer_name}, நீங்கள் {enquiry_item} பற்றி விசாரித்தீர்கள். Hello {customer_name}, we are calling regarding your enquiry for {enquiry_item}.</textarea>
+        <div class="field-block">
+          <label for="newWfStep1" class="field-label">Step 1: Greeting &amp; Enquiry Confirmation Script</label>
+          <textarea id="newWfStep1" class="field-textarea" rows="2" required>வணக்கம் {customer_name}, நீங்கள் {enquiry_item} பற்றி விசாரித்தீர்கள். Hello {customer_name}, we are calling regarding your enquiry for {enquiry_item}.</textarea>
         </div>
 
-        <div class="form-group">
-          <label for="newWfStep2">Step 2 (Q1): Staff Contacted Question Script</label>
-          <textarea id="newWfStep2" class="form-textarea" rows="2" required>எங்கள் அதிகாரிகள் உங்களை தொடர்பு கொண்டு பேசினார்களா? Did our executive contact you regarding {enquiry_item}?</textarea>
+        <div class="field-block">
+          <label for="newWfStep2" class="field-label">Step 2 (Q1): Staff Contacted Question Script</label>
+          <textarea id="newWfStep2" class="field-textarea" rows="2" required>எங்கள் அதிகாரிகள் உங்களை தொடர்பு கொண்டு பேசினார்களா? Did our executive contact you regarding {enquiry_item}?</textarea>
         </div>
 
-        <div class="form-group">
-          <label for="newWfStep3">Step 3 (Q2): Understood &amp; Satisfied Question Script</label>
-          <textarea id="newWfStep3" class="form-textarea" rows="2" required>விவரங்கள் உங்களுக்கு தெளிவாக புரிந்ததா மற்றும் திருப்திகரமாக இருந்ததா? Did you clearly understand the details and are you satisfied?</textarea>
+        <div class="field-block">
+          <label for="newWfStep3" class="field-label">Step 3 (Q2): Understood &amp; Satisfied Question Script</label>
+          <textarea id="newWfStep3" class="field-textarea" rows="2" required>விவரங்கள் உங்களுக்கு தெளிவாக புரிந்ததா மற்றும் திருப்திகரமாக இருந்ததா? Did you clearly understand the details and are you satisfied?</textarea>
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn-secondary" id="btnCancelNewWorkflow">Cancel</button>
-          <button type="submit" class="btn-primary">Create &amp; Activate Workflow</button>
+          <button type="button" class="btn-ghost" id="btnCancelNewWorkflow">Cancel</button>
+          <button type="submit" class="btn-solid">Create Workflow</button>
         </div>
       </form>
     </div>

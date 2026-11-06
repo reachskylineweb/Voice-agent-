@@ -105,7 +105,7 @@
     if (!container) return;
     const toast = document.createElement('div');
     toast.className = 'toast';
-    toast.innerHTML = `<span>✅</span><span>${escapeHtml(message)}</span>`;
+    toast.innerHTML = `<span class="signal-dot"></span><span>${escapeHtml(message)}</span>`;
     container.appendChild(toast);
     setTimeout(() => {
       toast.style.opacity = '0';
@@ -693,11 +693,11 @@
 
     if (statusBadge) {
       statusBadge.textContent = 'DIALING OUTBOUND...';
-      statusBadge.className = 'monitor-status-badge dialing';
+      statusBadge.className = 'console-state dialing';
     }
     setMonitorStep(1);
     if (liveFeed) {
-      liveFeed.innerHTML = `📡 Routing outbound call to <strong>${escapeHtml(customerName)} (${escapeHtml(customerPhone)})</strong> from CLI <code>${escapeHtml(callerId)}</code> using <strong>${escapeHtml(voiceModel)}</strong>...`;
+      liveFeed.innerHTML = `[SIP TRUNK] Routing outbound call to <strong>${escapeHtml(customerName)} (${escapeHtml(customerPhone)})</strong> via <code>${escapeHtml(callerId)}</code> (${escapeHtml(voiceModel)})...`;
     }
 
     await new Promise((r) => setTimeout(r, 900));
@@ -707,11 +707,11 @@
       .replace(/\{enquiry_item\}/g, enquiryItem);
 
     if (statusBadge) {
-      statusBadge.textContent = 'CALL CONNECTED • STEP 1';
-      statusBadge.className = 'monitor-status-badge connected';
+      statusBadge.textContent = 'CALL CONNECTED • STEP 01';
+      statusBadge.className = 'console-state connected';
     }
     if (liveFeed) {
-      liveFeed.innerHTML = `🤖 <strong>Reach AI Voice (${escapeHtml(wf.shortName)}):</strong> "${escapeHtml(greetingText)}"`;
+      liveFeed.innerHTML = `<strong>[AI • ${escapeHtml(wf.shortName)}]:</strong> "${escapeHtml(greetingText)}"`;
     }
     speakText(greetingText);
 
@@ -720,7 +720,7 @@
     setMonitorStep(2);
     const q1Prompt = wf.step2Script.replace(/\{enquiry_item\}/g, enquiryItem);
     if (liveFeed) {
-      liveFeed.innerHTML = `🤖 <strong>Reach AI Voice (Q1 - Staff Contacted?):</strong> "${escapeHtml(q1Prompt)}"`;
+      liveFeed.innerHTML = `<strong>[AI • Q1 Staff Contacted]:</strong> "${escapeHtml(q1Prompt)}"`;
     }
 
     await new Promise((r) => setTimeout(r, 1200));
@@ -735,7 +735,7 @@
     );
 
     if (liveFeed) {
-      liveFeed.innerHTML = `🗣️ <strong>Customer (${escapeHtml(customerName)}):</strong> "${escapeHtml(simulated.transcript)}"`;
+      liveFeed.innerHTML = `<strong>[CUSTOMER • ${escapeHtml(customerName)}]:</strong> "${escapeHtml(simulated.transcript)}"`;
     }
 
     await new Promise((r) => setTimeout(r, 1100));
@@ -776,7 +776,7 @@
       statusBadge.textContent = `COMPLETED (Q1: ${newRecord.q1Contacted} | Q2: ${newRecord.q2Satisfied})`;
     }
     if (liveFeed) {
-      liveFeed.innerHTML = `✅ <strong>Outbound Verification Logged:</strong> ${escapeHtml(customerName)} — Q1 Contacted: <strong>${newRecord.q1Contacted}</strong>, Q2 Satisfied: <strong>${newRecord.q2Satisfied}</strong>.`;
+      liveFeed.innerHTML = `<strong>[LOGGED]:</strong> ${escapeHtml(customerName)} — Q1 Contacted: <strong>${newRecord.q1Contacted}</strong>, Q2 Satisfied: <strong>${newRecord.q2Satisfied}</strong>.`;
     }
 
     showToast(`Outbound call to ${customerName} completed & logged!`);
@@ -913,7 +913,7 @@
 
     saveLocalState();
     if (statusText) {
-      statusText.textContent = `✅ Bulk Outbound Campaign Completed (${total} calls verified)`;
+      statusText.textContent = `Batch Outbound Campaign Completed (${total} calls verified)`;
     }
     showToast(`Bulk Campaign Finished: ${total} outbound verification calls logged!`);
 
