@@ -21,75 +21,10 @@
     },
   };
 
-  const STORAGE_KEY = 'reach_ai_voice_platform_state_v4';
+  const STORAGE_KEY = 'reach_ai_voice_clean_v1';
 
-  // ==================== DEFAULT INITIAL CLIENT WORKFLOWS (0 DUMMY LEADS) ====================
-  const DEFAULT_CLIENTS = [
-    {
-      id: 'client-tata',
-      name: 'TATA Leads',
-      industry: 'Automobile Enquiry Verification',
-      callerId: '+91 98765 11111',
-      voiceLanguage: 'Tamil + English (Pallavi HD)',
-      openingGreeting:
-        'வணக்கம் {lead_name}, நான் TATA Motors வாடிக்கையாளர் சேவை மையத்திலிருந்து பேசுகிறேன். நீங்கள் {enquiry_item} குறித்து விசாரித்தீர்கள்.',
-      questions: [
-        {
-          id: 'q1',
-          text: 'எங்கள் விற்பனை பிரதிநிதி (Sales Executive) உங்களை தொடர்பு கொண்டு பேசினாரா? (Did our staff contact you?)',
-        },
-        {
-          id: 'q2',
-          text: 'வாகன விவரங்கள் உங்களுக்கு தெளிவாக புரிந்ததா மற்றும் திருப்திகரமாக இருந்ததா? (Did you understand & are you satisfied?)',
-        },
-      ],
-      trainer: {
-        persona: 'Polite, warm Tamil & English bilingual verification executive',
-        whatToSpeak:
-          '- Greet the customer by name and confirm their TATA vehicle enquiry\n- Ask each configured workflow question clearly\n- Thank the customer politely before ending the call',
-        forbiddenPhrases: 'Unofficial cash discounts, competitor comparisons',
-        whatNotToSpeak:
-          '- Never quote unapproved on-road discounts\n- Never argue if the customer says they are not interested\n- Do not continue if the customer says they are driving',
-        positiveKeywords:
-          'ஆமா, ஆமாம், பேசினாங்க, கால் பண்ணாங்க, புரிஞ்சது, திருப்தி, aama, yes, spoke, contacted, satisfied, interested, ok',
-        negativeKeywords:
-          'இல்ல, இல்லை, பேசல, புரியல, திருப்தி இல்ல, வேண்டாம், illa, no, not contacted, not interested, dissatisfied',
-      },
-      leads: [],
-    },
-    {
-      id: 'client-healing-earth',
-      name: 'Healing Earth',
-      industry: 'Healthcare & Ayurveda Service Verification',
-      callerId: '+91 98765 22222',
-      voiceLanguage: 'Tamil + English (Pallavi HD)',
-      openingGreeting:
-        'வணக்கம் {lead_name}, நான் Healing Earth ஆயுர்வேத மருத்துவமனையிலிருந்து பேசுகிறேன். நீங்கள் {enquiry_item} சிகிச்சை குறித்து விசாரித்தீர்கள்.',
-      questions: [
-        {
-          id: 'q1',
-          text: 'எங்கள் மருத்துவ ஆலோசகர் (Health Counselor) உங்களை தொடர்பு கொண்டு பேசினாரா? (Did our counselor contact you?)',
-        },
-        {
-          id: 'q2',
-          text: 'சிகிச்சை விவரங்கள் மற்றும் கட்டண முறைகள் உங்களுக்கு தெளிவாக புரிந்ததா? (Are you satisfied with the explanation?)',
-        },
-      ],
-      trainer: {
-        persona: 'Empathetic, calm healthcare verification coordinator (Tamil & English)',
-        whatToSpeak:
-          '- Greet the patient warmly and confirm the therapy/service enquired\n- Verify whether the counselor contacted them and explained the therapy clearly\n- Offer a callback if they have pending questions',
-        forbiddenPhrases: 'Guaranteed instant cure claims, unverified medical advice',
-        whatNotToSpeak:
-          '- Never give unapproved medical prescriptions over the phone\n- Never pressure patients who decline consultation',
-        positiveKeywords:
-          'ஆமா, ஆமாம், டாக்டர் பேசினாங்க, புரிஞ்சது, திருப்தி, aama, yes, contacted, understood, satisfied',
-        negativeKeywords:
-          'இல்ல, இல்லை, பேசல, புரியல, திருப்தி இல்ல, வேண்டாம், illa, no, nobody called, not interested',
-      },
-      leads: [],
-    },
-  ];
+  // ==================== CLEAN INITIAL STATE (0 CLIENTS, 0 DUMMY DATA) ====================
+  const DEFAULT_CLIENTS = [];
 
   // ==================== APPLICATION STATE ====================
   const state = {
@@ -109,10 +44,18 @@
   // ==================== STORAGE & API SERVICE ====================
   function loadState() {
     try {
+      // Remove any legacy keys from older sessions that contained sample/dummy data
+      [
+        'reach_ai_voice_platform_state_v4',
+        'reach_ai_voice_state_v1',
+        'reach_ai_voice_state_v2',
+        'reach_ai_voice_state_v3',
+      ].forEach((k) => localStorage.removeItem(k));
+
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed.clients) && parsed.clients.length > 0) {
+        if (Array.isArray(parsed.clients)) {
           state.clients = parsed.clients;
           return;
         }
@@ -283,9 +226,8 @@
     document.getElementById('wfClientId').value = '';
     document.getElementById('wfClientName').value = '';
     document.getElementById('wfIndustry').value = '';
-    document.getElementById('wfCallerId').value = '+91 98765 00000';
-    document.getElementById('wfOpeningGreeting').value =
-      'வணக்கம் {lead_name}, நான் {client_name} இலிருந்து பேசுகிறேன். நீங்கள் {enquiry_item} குறித்து விசாரித்தீர்கள்.';
+    document.getElementById('wfCallerId').value = '';
+    document.getElementById('wfOpeningGreeting').value = '';
 
     document.getElementById('wfFormHeading').textContent = 'Add New Client & Workflow';
     document.getElementById('wfFormModeBadge').textContent = 'New Client';
@@ -293,11 +235,7 @@
     state.editingQuestionsDraft = [
       {
         id: 'q1',
-        text: 'எங்கள் அதிகாரிகள் உங்களை தொடர்பு கொண்டு பேசினார்களா? (Did our staff contact you?)',
-      },
-      {
-        id: 'q2',
-        text: 'விவரங்கள் உங்களுக்கு தெளிவாக புரிந்ததா மற்றும் திருப்திகரமாக இருந்ததா? (Are you satisfied with the details?)',
+        text: '',
       },
     ];
     renderQuestionsBuilderRows();
@@ -456,6 +394,11 @@
     const container = document.getElementById('savedWorkflowsListContainer');
     if (!container) return;
 
+    if (state.clients.length === 0) {
+      container.innerHTML = `<div style="padding: 24px; color: #706b63;">No clients saved yet. Use the form on the left to add a client and workflow questions.</div>`;
+      return;
+    }
+
     container.innerHTML = state.clients
       .map((client) => {
         const questionsHtml = (client.questions || [])
@@ -486,11 +429,9 @@
               <button type="button" class="btn-ghost btn-xs" data-wf-edit="${escapeHtml(client.id)}">
                 Edit Workflow &amp; Questions
               </button>
-              ${
-                state.clients.length > 1
-                  ? `<button type="button" class="btn-ghost btn-xs" data-wf-delete="${escapeHtml(client.id)}">Delete</button>`
-                  : ''
-              }
+              <button type="button" class="btn-ghost btn-xs" data-wf-delete="${escapeHtml(client.id)}">
+                Delete
+              </button>
             </div>
           </div>
         `;
@@ -906,6 +847,21 @@
     const selectEl = document.getElementById('trainerClientSelect');
     if (!selectEl) return;
 
+    if (state.clients.length === 0) {
+      selectEl.innerHTML = `<option value="">No clients added yet</option>`;
+      document.getElementById('trainerPersonaInput').value = '';
+      document.getElementById('trainerWhatToSpeak').value = '';
+      document.getElementById('trainerForbiddenPhrases').value = '';
+      document.getElementById('trainerWhatNotToSpeak').value = '';
+      document.getElementById('trainerPositiveKeywords').value = '';
+      document.getElementById('trainerNegativeKeywords').value = '';
+      const previewList = document.getElementById('trainerQuestionsPreviewList');
+      if (previewList) {
+        previewList.innerHTML = `<div style="padding: 18px; color: #706b63;">No clients added yet. Add a client in Client Workflow first.</div>`;
+      }
+      return;
+    }
+
     const currentVal = selectEl.value || state.clients[0]?.id;
     selectEl.innerHTML = state.clients
       .map(
@@ -970,35 +926,45 @@
     // Client-wise breakdown table
     const summaryTbody = document.getElementById('reportClientSummaryTbody');
     if (summaryTbody) {
-      summaryTbody.innerHTML = state.clients
-        .map((c) => {
-          const s = computeClientStats(c);
-          return `
-            <tr>
-              <td><strong>${escapeHtml(c.name)}</strong></td>
-              <td>${escapeHtml(c.callerId)}</td>
-              <td><strong>${s.assigned}</strong></td>
-              <td><strong>${s.spoken}</strong></td>
-              <td>${s.pending}</td>
-              <td><span class="badge-yes">${s.qualified}</span></td>
-              <td><span class="badge-no">${s.notQualified}</span></td>
-              <td><span class="badge-warn">${s.notAttended}</span></td>
-              <td>
-                <button type="button" class="btn-ghost btn-xs" data-export-client-id="${escapeHtml(c.id)}">
-                  Download Excel/CSV
-                </button>
-              </td>
-            </tr>
-          `;
-        })
-        .join('');
+      if (state.clients.length === 0) {
+        summaryTbody.innerHTML = `
+          <tr>
+            <td colspan="9" style="text-align:center; padding: 28px; color: #706b63;">
+              No clients added yet. Create a client workflow to track campaigns.
+            </td>
+          </tr>
+        `;
+      } else {
+        summaryTbody.innerHTML = state.clients
+          .map((c) => {
+            const s = computeClientStats(c);
+            return `
+              <tr>
+                <td><strong>${escapeHtml(c.name)}</strong></td>
+                <td>${escapeHtml(c.callerId)}</td>
+                <td><strong>${s.assigned}</strong></td>
+                <td><strong>${s.spoken}</strong></td>
+                <td>${s.pending}</td>
+                <td><span class="badge-yes">${s.qualified}</span></td>
+                <td><span class="badge-no">${s.notQualified}</span></td>
+                <td><span class="badge-warn">${s.notAttended}</span></td>
+                <td>
+                  <button type="button" class="btn-ghost btn-xs" data-export-client-id="${escapeHtml(c.id)}">
+                    Download Excel/CSV
+                  </button>
+                </td>
+              </tr>
+            `;
+          })
+          .join('');
 
-      summaryTbody.querySelectorAll('[data-export-client-id]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const c = getClientById(btn.getAttribute('data-export-client-id'));
-          if (c) exportClientLeadsToCsv(c, 'ALL');
+        summaryTbody.querySelectorAll('[data-export-client-id]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const c = getClientById(btn.getAttribute('data-export-client-id'));
+            if (c) exportClientLeadsToCsv(c, 'ALL');
+          });
         });
-      });
+      }
     }
 
     // Detailed Call Verification Logs
@@ -1255,14 +1221,12 @@
             openingGreeting,
             questions: cleanedQuestions,
             trainer: {
-              persona: `Polite, helpful verification agent for ${name}`,
-              whatToSpeak: `- Greet the customer and verify their ${industry} enquiry\n- Ask all ${cleanedQuestions.length} workflow questions clearly`,
+              persona: '',
+              whatToSpeak: '',
               forbiddenPhrases: '',
-              whatNotToSpeak: '- Do not make unverified promises',
-              positiveKeywords:
-                'ஆமா, ஆமாம், பேசினாங்க, புரிஞ்சது, திருப்தி, aama, yes, interested, satisfied',
-              negativeKeywords:
-                'இல்ல, இல்லை, பேசல, வேண்டாம், illa, no, not interested',
+              whatNotToSpeak: '',
+              positiveKeywords: '',
+              negativeKeywords: '',
             },
             leads: [],
           };
