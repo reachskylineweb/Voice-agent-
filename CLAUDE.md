@@ -4,22 +4,22 @@ This file provides guidance to Claude Code (`claude.ai/code`) when working with 
 
 ## Project Overview
 
-**Reach AI Voice — Multi-Workflow Outbound Verification Dashboard** is an Outbound-Only Voice AI Verification platform supporting multiple client workflows (**TATA Leads Enquiry Verification**, **Healing Earth Service Verification**, plus custom client workflows).
+**Reach AI Voice — Multi-Workflow Outbound Verification Dashboard** is a **Frontend-Only UI** project (`frontend/index.html`, `frontend/style.css`, `frontend/app.js`). Do not create backend servers or database files.
 
-## Folder Structure
+## Strict Project Rules
 
-- **`frontend/`**: Contains the complete Frontend Dashboard UI:
-  - `frontend/index.html`: 5-component Outbound Dashboard layout (Left Sidebar Navigation, Top KPI Summary Cards, Outbound Campaign Launcher, 3-Step Workflow Script & Intent Trainer, Client-Wise Verification Report Table, plus `+ Add New Workflow` modal).
-  - `frontend/style.css`: Dashboard styling.
-  - `frontend/app.js`: Frontend state management, REST API client (`/api/workflows`, `/api/calls/single`, `/api/calls/bulk`, `/api/reports`) with automatic local state / mock data fallback, CSV drag-and-drop parser, Tamil/Tanglish/English NLU keyword matcher, and CSV/Excel exporter.
-- **`backend/`**: Contains the Express + TypeScript Backend REST API:
-  - `backend/src/server.ts`: Express server serving static files from `../frontend` and implementing `GET/POST /api/workflows`, `POST /api/calls/single`, `POST /api/calls/bulk`, and `GET /api/reports`.
-  - `backend/data/db.json`: Pre-populated workflows and sample verification report records.
-  - `backend/package.json` & `backend/tsconfig.json`: Backend build and runtime config.
+1. **Frontend & UI Only** (`frontend/` directory).
+2. **Outbound Calls ONLY** (No inbound call UI).
+3. **Multi-Workflow Architecture** supporting pre-loaded workflows (`"TATA Leads Enquiry Verification"` and `"Healing Earth Service Verification"`) plus a working `"+ Add New Workflow"` modal.
+4. **Zero-Dependency Browser Execution**: Works immediately when `frontend/index.html` is opened in Chrome using local state (`localStorage` + pre-populated sample data), while keeping optional REST fetch hooks (`/api/workflows`, `/api/calls/single`, `/api/calls/bulk`, `/api/reports`) with automatic local fallback.
 
-## Common Commands
+## Key Files
 
-- **Install dependencies**: `cd backend && npm install` (or `npm run install:backend` from root)
-- **Run dev server**: `npm run dev` (starts `backend/src/server.ts` on `http://localhost:4500`)
-- **Build TypeScript**: `npm run build` (compiles `backend/src` to `backend/dist`)
-- **Start production server**: `npm start`
+- **`frontend/index.html`**: Complete Dashboard UI layout containing:
+  1. Left Sidebar Navigation (`Active Client Workflows` + `+ New Workflow` button + Main Navigation Tabs: `Outbound Campaign`, `Workflow Script Trainer`, `Verification Reports`, `Voice Engine Settings`).
+  2. Top KPI Summary Cards (`Total Outbound Calls Dialed`, `Q1: Staff Contacted (YES Count & %)`, `Q2: Understood & Satisfied (YES Count & %)`, `Pending / Needs Follow-Up (NO Count)`).
+  3. Outbound Campaign Launcher View (3 synced configuration dropdowns, Single Number Outbound Dialer with live progress monitor, Bulk CSV/Excel drag-and-drop uploader with progress bar).
+  4. 3-Step Workflow Script & Intent Trainer View (Bilingual `{customer_name}` & `{enquiry_item}` templates, Tamil/Tanglish/English YES/NO keyword lists, live Intent Classifier Sandbox).
+  5. Client-Wise Verification Report Table (Filter tabs, search, CSV/Excel export, and exact 8 columns).
+- **`frontend/style.css`**: Complete styling for the Reach AI Voice Outbound Dashboard.
+- **`frontend/app.js`**: Frontend state management, CSV parser, live outbound dialer simulation, NLU keyword matcher, and CSV/Excel exporter.
