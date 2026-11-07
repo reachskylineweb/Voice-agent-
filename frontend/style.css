@@ -728,10 +728,51 @@ body {
 .modal-footer-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 12px;
   padding-top: 14px;
   border-top: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+
+.modal-footer-left,
+.modal-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.wf-empty-notice {
+  padding: 12px 14px;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.wf-greeting-preview {
+  font-size: 13.5px;
+  color: var(--text-body);
+  background: #ffffff;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-input);
+}
+
+.wf-question-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.client-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .saved-wf-top {
@@ -773,7 +814,9 @@ body {
 /* ==================== BUTTONS (#dba718 & #1e1c19) ==================== */
 .btn-solid,
 .btn-ghost,
-.btn-stop-calls {
+.btn-stop-calls,
+.btn-danger,
+.btn-danger-outline {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -786,6 +829,26 @@ body {
   cursor: pointer;
   border: 1px solid transparent;
   transition: all 0.15s ease;
+}
+
+.btn-danger {
+  background: var(--no-text);
+  color: #ffffff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #a51e1e;
+}
+
+.btn-danger-outline {
+  background: var(--no-bg);
+  color: var(--no-text);
+  border-color: rgba(197, 39, 39, 0.28);
+}
+
+.btn-danger-outline:hover:not(:disabled) {
+  background: var(--no-text);
+  color: #ffffff;
 }
 
 .btn-solid {

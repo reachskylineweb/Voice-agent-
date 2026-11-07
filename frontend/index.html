@@ -238,7 +238,13 @@
             </div>
             <div class="client-detail-actions">
               <button type="button" class="btn-ghost btn-sm" id="btnEditThisClientWorkflow">
-                Edit Workflow Questions
+                Edit / Create Workflow
+              </button>
+              <button type="button" class="btn-danger-outline btn-sm" id="btnDeleteThisClientWorkflow">
+                Delete Workflow
+              </button>
+              <button type="button" class="btn-danger btn-sm" id="btnDeleteThisClient">
+                Delete Client
               </button>
             </div>
           </div>
@@ -737,12 +743,22 @@
         </div>
 
         <div class="modal-footer-actions">
-          <button type="button" class="btn-ghost" id="btnCancelClientModal">
-            Cancel
-          </button>
-          <button type="submit" class="btn-solid" id="btnSaveClientWorkflow">
-            Save Client Workflow
-          </button>
+          <div class="modal-footer-left" id="modalEditDeleteActions">
+            <button type="button" class="btn-danger-outline btn-sm" id="btnModalDeleteWorkflow">
+              Delete Workflow Only
+            </button>
+            <button type="button" class="btn-danger btn-sm" id="btnModalDeleteClient">
+              Delete Client
+            </button>
+          </div>
+          <div class="modal-footer-right">
+            <button type="button" class="btn-ghost" id="btnCancelClientModal">
+              Cancel
+            </button>
+            <button type="submit" class="btn-solid" id="btnSaveClientWorkflow">
+              Save Client Workflow
+            </button>
+          </div>
         </div>
       </form>
     </div>

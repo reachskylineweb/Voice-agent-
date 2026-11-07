@@ -216,6 +216,53 @@
     }
   }
 
+  async function deleteClientWorkflowOnly(clientId) {
+    const client = getClientById(clientId);
+    if (!client) return;
+
+    client.openingGreeting = '';
+    client.questions = [];
+    saveState();
+    await tryApiCall(`${API_CONFIG.ENDPOINTS.CLIENTS}/${clientId}`, {
+      method: 'PUT',
+      body: JSON.stringify(client),
+    });
+    renderAll();
+    showToast(
+      `Deleted workflow for "${client.name}". Click "+ Create New Workflow" to add a new workflow.`
+    );
+  }
+
+  async function deleteClientCompletely(clientId) {
+    const client = getClientById(clientId);
+    if (!client) return;
+    const clientName = client.name;
+
+    state.clients = state.clients.filter((c) => c.id !== clientId);
+    if (state.selectedOutboundClientId === clientId) {
+      state.selectedOutboundClientId = null;
+    }
+    saveState();
+    await tryApiCall(`${API_CONFIG.ENDPOINTS.CLIENTS}/${clientId}`, {
+      method: 'DELETE',
+    });
+    renderAll();
+    showToast(`Deleted client "${clientName}" completely.`);
+  }
+
+  async function deleteSingleWorkflowQuestion(clientId, questionIndex) {
+    const client = getClientById(clientId);
+    if (!client || !Array.isArray(client.questions)) return;
+    client.questions.splice(questionIndex, 1);
+    saveState();
+    await tryApiCall(`${API_CONFIG.ENDPOINTS.CLIENTS}/${clientId}`, {
+      method: 'PUT',
+      body: JSON.stringify(client),
+    });
+    renderAll();
+    showToast(`Removed question Q${questionIndex + 1} from "${client.name}".`);
+  }
+
   function loadClientIntoWorkflowEditor(clientId) {
     const client = getClientById(clientId);
     if (!client) return;
@@ -228,10 +275,24 @@
       client.voiceLanguage || 'Tamil + English (Pallavi HD)';
     document.getElementById('wfOpeningGreeting').value = client.openingGreeting || '';
 
-    document.getElementById('wfFormHeading').textContent = `Edit Workflow: ${client.name}`;
-    document.getElementById('wfFormModeBadge').textContent = 'Editing Workflow';
+    const hasExistingWorkflow =
+      Array.isArray(client.questions) && client.questions.length > 0;
 
-    state.editingQuestionsDraft = JSON.parse(JSON.stringify(client.questions || []));
+    document.getElementById('wfFormHeading').textContent = hasExistingWorkflow
+      ? `Edit Workflow: ${client.name}`
+      : `Create New Workflow: ${client.name}`;
+    document.getElementById('wfFormModeBadge').textContent = hasExistingWorkflow
+      ? 'Editing Workflow'
+      : 'New Workflow for Client';
+
+    const editDeleteActions = document.getElementById('modalEditDeleteActions');
+    if (editDeleteActions) {
+      editDeleteActions.classList.remove('hidden');
+    }
+
+    state.editingQuestionsDraft = hasExistingWorkflow
+      ? JSON.parse(JSON.stringify(client.questions))
+      : [{ id: 'q1', text: '' }];
     renderQuestionsBuilderRows();
     openClientWorkflowModal();
   }
@@ -245,6 +306,11 @@
 
     document.getElementById('wfFormHeading').textContent = 'Add New Client & Workflow';
     document.getElementById('wfFormModeBadge').textContent = 'New Client';
+
+    const editDeleteActions = document.getElementById('modalEditDeleteActions');
+    if (editDeleteActions) {
+      editDeleteActions.classList.add('hidden');
+    }
 
     state.editingQuestionsDraft = [
       {
@@ -305,7 +371,7 @@
                 <div class="client-card-name">${escapeHtml(client.name)}</div>
                 <div class="client-card-category">${escapeHtml(client.industry)}</div>
               </div>
-              <span class="client-card-badge">${qCount} Questions</span>
+              <span class="client-card-badge">${qCount > 0 ? `${qCount} Questions` : 'No Workflow'}</span>
             </div>
 
             <div class="client-card-stats">
@@ -327,12 +393,22 @@
               </div>
             </div>
 
-            <div class="client-card-footer">
-              <button type="button" class="btn-ghost btn-xs" data-edit-wf-id="${escapeHtml(client.id)}">
-                Edit Workflow
-              </button>
+            <div class="client-card-footer" style="flex-wrap: wrap;">
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button type="button" class="btn-ghost btn-xs" data-edit-wf-id="${escapeHtml(client.id)}">
+                  ${qCount > 0 ? 'Edit Workflow' : '+ New Workflow'}
+                </button>
+                ${
+                  qCount > 0
+                    ? `<button type="button" class="btn-danger-outline btn-xs" data-del-wf-only-id="${escapeHtml(client.id)}">Delete Workflow</button>`
+                    : ''
+                }
+                <button type="button" class="btn-danger btn-xs" data-del-client-id="${escapeHtml(client.id)}">
+                  Delete Client
+                </button>
+              </div>
               <button type="button" class="btn-solid btn-xs" data-open-client-btn="${escapeHtml(client.id)}">
-                Open Outbound Calls →
+                Open Calls →
               </button>
             </div>
           </div>
@@ -346,6 +422,20 @@
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         loadClientIntoWorkflowEditor(btn.getAttribute('data-edit-wf-id'));
+      });
+    });
+
+    container.querySelectorAll('[data-del-wf-only-id]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteClientWorkflowOnly(btn.getAttribute('data-del-wf-only-id'));
+      });
+    });
+
+    container.querySelectorAll('[data-del-client-id]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteClientCompletely(btn.getAttribute('data-del-client-id'));
       });
     });
 
@@ -415,12 +505,42 @@
 
     container.innerHTML = state.clients
       .map((client) => {
-        const questionsHtml = (client.questions || [])
-          .map(
-            (q, idx) =>
-              `<li><strong>Q${idx + 1}:</strong> ${escapeHtml(q.text)}</li>`
-          )
-          .join('');
+        const qList = Array.isArray(client.questions) ? client.questions : [];
+        const hasWorkflow = qList.length > 0;
+
+        const workflowBodyHtml = hasWorkflow
+          ? `
+            ${
+              client.openingGreeting
+                ? `<div class="wf-greeting-preview"><strong>Greeting:</strong> ${escapeHtml(client.openingGreeting)}</div>`
+                : ''
+            }
+            <ul class="saved-wf-questions">
+              ${qList
+                .map(
+                  (q, idx) => `
+                  <li class="wf-question-item">
+                    <span><strong>Q${idx + 1}:</strong> ${escapeHtml(q.text)}</span>
+                    <button
+                      type="button"
+                      class="btn-remove-question"
+                      title="Delete this question"
+                      data-del-single-q-client="${escapeHtml(client.id)}"
+                      data-del-single-q-idx="${idx}"
+                    >
+                      Delete Q${idx + 1}
+                    </button>
+                  </li>
+                `
+                )
+                .join('')}
+            </ul>
+          `
+          : `
+            <div class="wf-empty-notice">
+              Workflow was deleted for this client. Click <strong>"+ Create New Workflow"</strong> below to configure a new workflow.
+            </div>
+          `;
 
         return `
           <div class="saved-wf-card">
@@ -429,22 +549,27 @@
                 <div class="saved-wf-title">${escapeHtml(client.name)}</div>
                 <div class="saved-wf-sub">${escapeHtml(client.industry)} • Caller ID: ${escapeHtml(client.callerId)}</div>
               </div>
-              <span class="mode-pill">${(client.questions || []).length} Questions</span>
+              <span class="mode-pill">${hasWorkflow ? `${qList.length} Questions` : 'No Workflow'}</span>
             </div>
 
-            <ul class="saved-wf-questions">
-              ${questionsHtml}
-            </ul>
+            ${workflowBodyHtml}
 
             <div class="saved-wf-actions">
               <button type="button" class="btn-solid btn-xs" data-wf-open-calls="${escapeHtml(client.id)}">
                 Open Outbound Calls
               </button>
-              <button type="button" class="btn-ghost btn-xs" data-wf-edit="${escapeHtml(client.id)}">
-                Edit Workflow &amp; Questions
+              <button type="button" class="${hasWorkflow ? 'btn-ghost' : 'btn-solid'} btn-xs" data-wf-edit="${escapeHtml(client.id)}">
+                ${hasWorkflow ? 'Edit Workflow & Questions' : '+ Create New Workflow'}
               </button>
-              <button type="button" class="btn-ghost btn-xs" data-wf-delete="${escapeHtml(client.id)}">
-                Delete
+              ${
+                hasWorkflow
+                  ? `<button type="button" class="btn-danger-outline btn-xs" data-wf-delete-only="${escapeHtml(client.id)}">
+                      Delete Workflow
+                    </button>`
+                  : ''
+              }
+              <button type="button" class="btn-danger btn-xs" data-wf-delete-client="${escapeHtml(client.id)}">
+                Delete Client
               </button>
             </div>
           </div>
@@ -464,17 +589,23 @@
       );
     });
 
-    container.querySelectorAll('[data-wf-delete]').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const id = btn.getAttribute('data-wf-delete');
-        state.clients = state.clients.filter((c) => c.id !== id);
-        if (state.selectedOutboundClientId === id) {
-          state.selectedOutboundClientId = null;
-        }
-        saveState();
-        await tryApiCall(`${API_CONFIG.ENDPOINTS.CLIENTS}/${id}`, { method: 'DELETE' });
-        renderAll();
-        showToast('Client workflow deleted.');
+    container.querySelectorAll('[data-wf-delete-only]').forEach((btn) => {
+      btn.addEventListener('click', () =>
+        deleteClientWorkflowOnly(btn.getAttribute('data-wf-delete-only'))
+      );
+    });
+
+    container.querySelectorAll('[data-wf-delete-client]').forEach((btn) => {
+      btn.addEventListener('click', () =>
+        deleteClientCompletely(btn.getAttribute('data-wf-delete-client'))
+      );
+    });
+
+    container.querySelectorAll('[data-del-single-q-client]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const cId = btn.getAttribute('data-del-single-q-client');
+        const qIdx = Number(btn.getAttribute('data-del-single-q-idx'));
+        deleteSingleWorkflowQuestion(cId, qIdx);
       });
     });
   }
@@ -737,6 +868,12 @@
     if (state.isCallingActive) return;
     const client = getClientById(state.selectedOutboundClientId);
     if (!client) return;
+
+    if (!Array.isArray(client.questions) || client.questions.length === 0) {
+      showToast('Please create a workflow and add call questions for this client first.');
+      loadClientIntoWorkflowEditor(client.id);
+      return;
+    }
 
     const pendingLeads = (client.leads || []).filter((l) => l.status === 'PENDING');
     if (pendingLeads.length === 0) {
@@ -1285,6 +1422,43 @@
       ?.addEventListener('click', () => {
         if (state.selectedOutboundClientId) {
           loadClientIntoWorkflowEditor(state.selectedOutboundClientId);
+        }
+      });
+
+    document
+      .getElementById('btnDeleteThisClientWorkflow')
+      ?.addEventListener('click', () => {
+        if (state.selectedOutboundClientId) {
+          deleteClientWorkflowOnly(state.selectedOutboundClientId);
+        }
+      });
+
+    document
+      .getElementById('btnDeleteThisClient')
+      ?.addEventListener('click', () => {
+        if (state.selectedOutboundClientId) {
+          deleteClientCompletely(state.selectedOutboundClientId);
+        }
+      });
+
+    // Popup Modal Footer Delete Workflow / Delete Client buttons
+    document
+      .getElementById('btnModalDeleteWorkflow')
+      ?.addEventListener('click', async () => {
+        const existingId = document.getElementById('wfClientId')?.value?.trim();
+        if (existingId) {
+          await deleteClientWorkflowOnly(existingId);
+          closeClientWorkflowModal();
+        }
+      });
+
+    document
+      .getElementById('btnModalDeleteClient')
+      ?.addEventListener('click', async () => {
+        const existingId = document.getElementById('wfClientId')?.value?.trim();
+        if (existingId) {
+          await deleteClientCompletely(existingId);
+          closeClientWorkflowModal();
         }
       });
 
