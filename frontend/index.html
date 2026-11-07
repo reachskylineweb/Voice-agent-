@@ -322,6 +322,40 @@
                 </button>
               </div>
 
+              <!-- Instant Real Mobile Call Bar (Twilio + Approved VITS-Rasa-13 Voice) -->
+              <div style="margin-top:10px;padding:10px;border-radius:8px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);">
+                <div style="font-size:12px;font-weight:600;color:#10b981;margin-bottom:6px;">
+                  📞 Instant Real Mobile Call (Enter Number &amp; Dial with Approved Tamil Voice)
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <input
+                    type="tel"
+                    id="livePhoneDialInput"
+                    class="field-input"
+                    value="+918610057080"
+                    placeholder="+91 86100 57080"
+                    style="flex:1;padding:7px 10px;font-size:13px;"
+                  />
+                  <button
+                    type="button"
+                    class="btn-solid"
+                    id="btnDialLivePhoneNow"
+                    style="background:#10b981;border-color:#059669;white-space:nowrap;padding:7px 12px;font-size:13px;"
+                  >
+                    📲 Call Phone Now
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-solid"
+                    id="btnStartLiveMicCall"
+                    style="background:#2563eb;border-color:#1d4ed8;white-space:nowrap;padding:7px 12px;font-size:13px;"
+                    title="Talk live with the Tamil AI Agent using your laptop mic (Supports Barge-In / Interruption!)"
+                  >
+                    🎙️ Live Mic Call
+                  </button>
+                </div>
+              </div>
+
               <div class="live-agent-status-box" id="clientLiveCallBox">
                 <div class="live-status-top">
                   <span class="live-badge" id="clientLiveStateBadge">Agent Idle</span>
@@ -704,13 +738,17 @@
           </div>
 
           <div class="field-block">
-            <label for="wfVoiceLanguage" class="field-label">Voice Language &amp; Model</label>
-            <select id="wfVoiceLanguage" class="field-select">
-              <option value="Tamil + English (Pallavi HD)">Tamil + English (Pallavi HD)</option>
-              <option value="Tamil Male (Valluvar HD)">Tamil Male (Valluvar HD)</option>
-              <option value="Indian English (Neerja HD)">Indian English (Neerja HD)</option>
-              <option value="Hindi + English (Aarav HD)">Hindi + English (Aarav HD)</option>
-            </select>
+            <label for="wfVoiceLanguage" class="field-label">Voice Language &amp; Model (Approved)</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <select id="wfVoiceLanguage" class="field-select" style="flex:1;">
+                <option value="AI4Bharat VITS-Rasa-13 Conversational (24kHz Approved)">🏆 AI4Bharat VITS-Rasa-13 Conversational (24kHz — Approved)</option>
+                <option value="Pure Rasa Female (0.90x Locked)">🔒 Pure Rasa Female (0.90x Locked)</option>
+                <option value="Tamil + English (Pallavi HD)">Tamil + English (Pallavi HD)</option>
+              </select>
+              <button type="button" class="btn-ghost btn-sm" id="btnTestApprovedVoice" title="Play sample greeting in approved voice">
+                🔊 Test Voice
+              </button>
+            </div>
           </div>
         </div>
 

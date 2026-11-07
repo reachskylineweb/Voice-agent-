@@ -11,7 +11,7 @@
 
   // ==================== BACKEND INTEGRATION CONFIGURATION ====================
   const API_CONFIG = {
-    BASE_URL: '/api', // Change to e.g. 'http://localhost:5000/api' when backend is deployed
+    BASE_URL: window.location.protocol === 'file:' ? 'http://localhost:8000/api' : '/api', // Change to e.g. 'http://localhost:5000/api' when backend is deployed
     ENDPOINTS: {
       CLIENTS: '/clients', // GET all, POST new, PUT /:id, DELETE /:id
       CLIENT_LEADS: (clientId) => `/clients/${clientId}/leads`, // POST upload/scan leads
@@ -21,10 +21,100 @@
     },
   };
 
-  const STORAGE_KEY = 'reach_ai_voice_clean_v1';
+  const STORAGE_KEY = 'reach_ai_voice_vits13_approved_v3';
 
   // ==================== CLEAN INITIAL STATE (0 CLIENTS, 0 DUMMY DATA) ====================
-  const DEFAULT_CLIENTS = [];
+  const DEFAULT_CLIENTS = [
+    {
+      id: 'client-tata-motors',
+      name: 'TATA Motors',
+      industry: 'Automobile Dealership Enquiry Verification',
+      callerId: '+91 98400 11223',
+      voiceLanguage: 'AI4Bharat VITS-Rasa-13 Conversational (24kHz Approved)',
+      openingGreeting: 'வணக்கம் {lead_name} சார், இது ஒரு வெரிபிகேஷன் கால், டாட்டா மோட்டார்ஸ்ல இருந்து பேசுறேன்.',
+      questions: [
+        {
+          id: 'q1',
+          text: 'நீங்க டாட்டா நெக்சான் வண்டி பத்தி விசாரிச்சிருந்தீங்க, நம்ம டீலர் உங்ககிட்ட பேசுனாங்களா?',
+        },
+        {
+          id: 'q2',
+          text: 'டீலர் சொன்ன வண்டி விவரம் மற்றும் விலை உங்களுக்கு திருப்தியா இருந்ததா சார்?',
+        },
+      ],
+      trainer: {
+        persona: 'Polite, natural Tamil female customer support executive from TATA Motors.',
+        whatToSpeak: '- Greet the customer by name\n- Verify if the showroom dealer contacted them regarding their TATA vehicle enquiry\n- Ask if they are satisfied with the explanation',
+        forbiddenPhrases: 'Do not quote unofficial discounts or ask for OTP',
+        whatNotToSpeak: '- Never promise unauthorized cash discounts\n- Never argue if the customer is busy',
+        positiveKeywords: 'ஆமா, ஆமாம், பேசுனாங்க, பேசினாங்க, புரிஞ்சது, திருப்தி, ஓகே, சரி, aama, yes, spoke, satisfied, ok, interested',
+        negativeKeywords: 'இல்ல, இல்லை, பேசல, கூப்பிடல, வேண்டாம், திருப்தி இல்ல, illa, no, not called, not interested, busy',
+      },
+      leads: [
+        {
+          id: 'LEAD-TATA-1',
+          name: 'ரமேஷ்',
+          phone: '+918610057080',
+          enquiry: 'TATA Nexon XZ+',
+          simMode: 'qualified',
+          status: 'PENDING',
+          answers: {},
+          callSummary: '',
+          calledAt: '',
+        },
+        {
+          id: 'LEAD-TATA-2',
+          name: 'சுரேஷ்',
+          phone: '+91 98765 12345',
+          enquiry: 'TATA Punch Accomplished',
+          simMode: 'not_qualified',
+          status: 'PENDING',
+          answers: {},
+          callSummary: '',
+          calledAt: '',
+        },
+      ],
+    },
+    {
+      id: 'client-healing-earth',
+      name: 'Healing Earth',
+      industry: 'Wellness & Holistic Healthcare Verification',
+      callerId: '+91 98400 44556',
+      voiceLanguage: 'AI4Bharat VITS-Rasa-13 Conversational (24kHz Approved)',
+      openingGreeting: 'வணக்கம் {lead_name} சார், இது ஒரு வெரிபிகேஷன் கால், ஹீலிங் எர்த்ல இருந்து பேசுறேன்.',
+      questions: [
+        {
+          id: 'q1',
+          text: 'நீங்க எங்க சர்வீஸ் பத்தி விசாரிச்சிருந்தீங்க, நம்ம டீம் உங்ககிட்ட பேசுனாங்களா?',
+        },
+        {
+          id: 'q2',
+          text: 'இந்த வாரம் நேர்ல வந்து கன்சல்டேஷன் அப்பாயின்ட்மென்ட் புக் பண்ணிக்கலாமா சார்?',
+        },
+      ],
+      trainer: {
+        persona: 'Warm, caring Tamil female wellness coordinator from Healing Earth.',
+        whatToSpeak: '- Greet the client warmly\n- Check if our wellness team explained the therapy package\n- Confirm consultation interest',
+        forbiddenPhrases: 'Do not give medical prescriptions on the call',
+        whatNotToSpeak: '- Do not diagnose medical conditions over the phone',
+        positiveKeywords: 'ஆமா, ஆமாம், பேசுனாங்க, வரேன், ஓகே, புக் பண்ணுங்க, aama, yes, spoke, ok, book',
+        negativeKeywords: 'இல்ல, இல்லை, பேசல, வேண்டாம், அப்புறம், illa, no, not interested',
+      },
+      leads: [
+        {
+          id: 'LEAD-HEAL-1',
+          name: 'கார்த்திக்',
+          phone: '+91 98401 22334',
+          enquiry: 'Ayurveda Wellness Package',
+          simMode: 'qualified',
+          status: 'PENDING',
+          answers: {},
+          callSummary: '',
+          calledAt: '',
+        },
+      ],
+    },
+  ];
 
   // ==================== APPLICATION STATE ====================
   const state = {
@@ -850,18 +940,211 @@
     showToast('Please enter a valid Google Sheet link or "Name, Phone, Enquiry" rows.');
   }
 
-  // -------------------- START & STOP SEQUENTIAL VOICE AGENT CALLER --------------------
-  function speakUtterance(text) {
-    const chk = document.getElementById('chkLiveTts');
-    if (!chk || !chk.checked || !('speechSynthesis' in window)) return;
-    try {
-      window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.rate = 1.0;
-      window.speechSynthesis.speak(utter);
-    } catch (_e) {
-      // ignore browser TTS errors
+  // -------------------- SMART SPEECH-ONLY BARGE-IN ENGINE (IGNORES NOISE & SPEAKER ECHO) --------------------
+  let activeAudioPlayer = null;
+  let activeAudioResolve = null;
+  let currentSpeechGenId = 0;
+
+  function stopActiveAudioImmediately() {
+    if (activeAudioPlayer) {
+      try {
+        activeAudioPlayer.pause();
+        activeAudioPlayer.currentTime = 0;
+      } catch (_e) {}
+      activeAudioPlayer = null;
     }
+    if (typeof activeAudioResolve === 'function') {
+      const fn = activeAudioResolve;
+      activeAudioResolve = null;
+      fn({ interrupted: true });
+    }
+  }
+
+  let activeBargeInHandler = null;
+
+  /**
+   * Checks if recognized mic words are just acoustic echo from the AI's own speaker output.
+   */
+  function isEchoOfAiPrompt(spokenStr, aiPromptText) {
+    const cleanSpoken = String(spokenStr || '').trim();
+    if (!cleanSpoken) return true;
+    const cleanPrompt = String(aiPromptText || '').replace(/[.,?!]/g, '');
+    // Customer interruption words that never appear in the AI's own greeting/questions:
+    const customerTriggers = [
+      'ஹலோ', 'ஆமா', 'ஆமாம்', 'இல்ல', 'இல்லை', 'பேசல', 'கூப்பிடல',
+      'சரி', 'ஓகே', 'வெயிட்', 'நிறுத்து', 'கேக்குதா', 'புரியல', 'கேக்கல',
+      'யாரு', 'யார்', 'எதுக்கு', 'பிஸி', 'வேண்டாம்', 'அப்புறம்',
+      'hello', 'yes', 'no', 'wait', 'stop', 'ok', 'aama', 'illa', 'yaaru', 'edhuku', 'busy'
+    ];
+    for (const kw of customerTriggers) {
+      if (cleanSpoken.toLowerCase().includes(kw)) {
+        return false;
+      }
+    }
+    // If all words in cleanSpoken appear inside the AI's own prompt, it's speaker echo!
+    const words = cleanSpoken.split(/\s+/).filter((w) => w.length >= 2);
+    if (words.length === 0) return true;
+    const echoMatches = words.filter((w) => cleanPrompt.includes(w));
+    return echoMatches.length === words.length;
+  }
+
+  /**
+   * Speaks Tamil text using Sir-Approved VITS-Rasa-13.
+   * Prevents any overlapping or concurrent playback across utterances using currentSpeechGenId.
+   */
+  async function speakUtterance(text, forceSpeak = false, enableBargeIn = true) {
+    const chk = document.getElementById('chkLiveTts');
+    if (!forceSpeak && (!chk || !chk.checked)) {
+      await new Promise((r) => setTimeout(r, 700));
+      return { interrupted: false, customerSpeech: '' };
+    }
+
+    const myGenId = ++currentSpeechGenId;
+    stopActiveAudioImmediately();
+
+    let playUrl = null;
+    let isBlobUrl = false;
+    try {
+      const res = await fetch(API_CONFIG.BASE_URL + '/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+        body: JSON.stringify({ text }),
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        playUrl = URL.createObjectURL(blob);
+        isBlobUrl = true;
+      }
+    } catch (_err) {}
+    if (!playUrl) return { interrupted: false, customerSpeech: '' };
+
+    // If another utterance was requested while fetch('/api/tts') was in flight, abort this older audio!
+    if (myGenId !== currentSpeechGenId) {
+      if (isBlobUrl) URL.revokeObjectURL(playUrl);
+      return { interrupted: true, customerSpeech: '' };
+    }
+    stopActiveAudioImmediately();
+
+    let wasInterrupted = false;
+    let capturedSpeech = '';
+    let rec = null;
+    let speechFinishedResolve = null;
+
+    const speechFinishedPromise = new Promise((resolveSpeech) => {
+      speechFinishedResolve = resolveSpeech;
+    });
+
+    let finalTranscript = '';
+    let interimTranscript = '';
+    let silenceTimer = null;
+    let doneSpeech = false;
+
+    const finishCustomerTurn = (overrideText) => {
+      if (doneSpeech) return;
+      doneSpeech = true;
+      activeBargeInHandler = null;
+      if (silenceTimer) clearTimeout(silenceTimer);
+      try { if (rec) rec.stop(); } catch (_e) {}
+      if (speechFinishedResolve) {
+        const resultText = overrideText !== undefined ? overrideText : (finalTranscript || interimTranscript).trim();
+        speechFinishedResolve(resultText);
+      }
+    };
+
+    const triggerVerifiedSpeechBargeIn = (detectedWords, isManualInstant = false) => {
+      const sp = document.getElementById('liveMicHeardSpan');
+      if (sp) sp.textContent = `Hearing: "${detectedWords}"`;
+      if (!wasInterrupted) {
+        wasInterrupted = true;
+        stopActiveAudioImmediately();
+        const msgEl = document.getElementById('clientLiveCallMessage');
+        if (msgEl) {
+          msgEl.innerHTML += `<div style="color:#f59e0b;font-weight:600;margin-top:4px;">⏸️ Customer Interrupted ("${escapeHtml(detectedWords)}") — AI Stopped &amp; Listening...</div>`;
+        }
+      }
+      if (silenceTimer) clearTimeout(silenceTimer);
+      if (isManualInstant) {
+        finishCustomerTurn(detectedWords);
+      } else {
+        silenceTimer = setTimeout(() => finishCustomerTurn(), finalTranscript.trim() ? 450 : 750);
+      }
+    };
+
+    if (enableBargeIn) {
+      activeBargeInHandler = (manualWords) => {
+        triggerVerifiedSpeechBargeIn(manualWords, true);
+      };
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRec) {
+        try {
+          rec = new SpeechRec();
+          rec.lang = 'ta-IN';
+          rec.continuous = true;
+          rec.interimResults = true;
+          rec.maxAlternatives = 1;
+          // ONLY trigger when real spoken words are recognized and are NOT speaker echo!
+          rec.onresult = (ev) => {
+            interimTranscript = '';
+            for (let i = ev.resultIndex; i < ev.results.length; i++) {
+              const t = ev.results[i][0].transcript;
+              if (ev.results[i].isFinal) finalTranscript += ' ' + t;
+              else interimTranscript += t;
+            }
+            const combined = (finalTranscript + ' ' + interimTranscript).trim();
+            if (combined.length >= 2 && !isEchoOfAiPrompt(combined, text)) {
+              triggerVerifiedSpeechBargeIn(combined, false);
+            }
+          };
+          rec.onerror = () => {};
+          rec.onend = () => {
+            if (wasInterrupted && !doneSpeech && (finalTranscript || interimTranscript).trim().length > 0) {
+              finishCustomerTurn();
+            }
+          };
+          rec.start();
+        } catch (_e) {}
+      }
+    }
+
+    await new Promise((resolveAudio) => {
+      const audio = new Audio(playUrl);
+      activeAudioPlayer = audio;
+      activeAudioResolve = (resObj) => {
+        if (isBlobUrl) URL.revokeObjectURL(playUrl);
+        resolveAudio(resObj);
+      };
+      audio.onended = () => {
+        activeAudioPlayer = null;
+        if (activeAudioResolve) {
+          const fn = activeAudioResolve;
+          activeAudioResolve = null;
+          fn({ interrupted: false });
+        }
+      };
+      audio.onerror = () => {
+        activeAudioPlayer = null;
+        if (activeAudioResolve) {
+          const fn = activeAudioResolve;
+          activeAudioResolve = null;
+          fn({ interrupted: false });
+        }
+      };
+      audio.play().catch(() => {
+        if (activeAudioResolve) {
+          const fn = activeAudioResolve;
+          activeAudioResolve = null;
+          fn({ interrupted: false });
+        }
+      });
+    });
+
+    if (wasInterrupted) {
+      capturedSpeech = await speechFinishedPromise;
+    } else {
+      finishCustomerTurn();
+    }
+
+    return { interrupted: wasInterrupted, customerSpeech: capturedSpeech };
   }
 
   async function startClientOutboundCalling() {
@@ -875,9 +1158,20 @@
       return;
     }
 
-    const pendingLeads = (client.leads || []).filter((l) => l.status === 'PENDING');
+    // Auto-reset leads if all were already called ("2 / 2 Called") so "▶ Start Calling" ALWAYS works immediately!
+    let pendingLeads = (client.leads || []).filter((l) => l.status === 'PENDING');
+    if (pendingLeads.length === 0 && Array.isArray(client.leads) && client.leads.length > 0) {
+      client.leads.forEach((l) => {
+        l.status = 'PENDING';
+        l.answers = {};
+        l.callSummary = '';
+      });
+      pendingLeads = client.leads.slice();
+      saveState();
+      renderAll();
+    }
     if (pendingLeads.length === 0) {
-      showToast('No pending leads to call. Upload leads first.');
+      showToast('No leads in list. Add a lead or click Call Phone Now.');
       return;
     }
 
@@ -899,21 +1193,44 @@
       state.currentlyCallingLeadId = lead.id;
       renderOutboundView();
 
-      if (liveBadge) liveBadge.textContent = `Calling Lead ${i + 1} of ${pendingLeads.length}`;
+      if (liveBadge) liveBadge.textContent = `🎙️ Live Call (${i + 1}/${pendingLeads.length}): ${lead.name}`;
       const greeting = (client.openingGreeting || '')
         .replace(/\{lead_name\}/g, lead.name)
         .replace(/\{customer_name\}/g, lead.name)
         .replace(/\{client_name\}/g, client.name)
         .replace(/\{enquiry_item\}/g, lead.enquiry || 'your enquiry');
 
-      if (liveMsg) {
-        liveMsg.innerHTML = `Dialing <strong>${escapeHtml(lead.name)} (${escapeHtml(lead.phone)})</strong> — Speaking Greeting: "${escapeHtml(greeting)}"`;
-      }
-      speakUtterance(greeting);
+      const callLogs = [];
+      let liveHeardText = '';
 
-      await new Promise((r) => setTimeout(r, 1100));
+      const renderInteractivePanel = () => {
+        if (!liveMsg) return;
+        const quickPills = `
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.14);">
+            <div style="font-size:11px;color:#9ca3af;margin-bottom:5px;">
+              🎙️ <strong>Speak in Tamil into Mic</strong> (or click any customer reply below):
+              <span id="liveMicHeardSpan" style="color:#fbbf24;font-weight:600;margin-left:6px;">${liveHeardText ? 'Hearing: "' + escapeHtml(liveHeardText) + '"' : ''}</span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;">
+              <button type="button" onclick="window.__sendLiveCustomerUtterance('நீ யாரு எங்க இருந்து பேசுறீங்க?')" style="background:#374151;color:#fff;border:1px solid #4b5563;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">❓ "நீ யாரு?"</button>
+              <button type="button" onclick="window.__sendLiveCustomerUtterance('எதுக்கு கால் பண்ணீங்க?')" style="background:#374151;color:#fff;border:1px solid #4b5563;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">❓ "எதுக்கு கால் பண்ணீங்க?"</button>
+              <button type="button" onclick="window.__sendLiveCustomerUtterance('புரியல இன்னொரு வாட்டி சொல்லுங்க')" style="background:#374151;color:#fff;border:1px solid #4b5563;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">🔁 "புரியல திரும்ப சொல்லுங்க"</button>
+              <button type="button" onclick="window.__sendLiveCustomerUtterance('ஆமா சார் பேசுனாங்க திருப்தியா இருந்தது')" style="background:#065f46;color:#fff;border:1px solid #10b981;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">✅ "ஆமா பேசுனாங்க"</button>
+              <button type="button" onclick="window.__sendLiveCustomerUtterance('இல்ல இன்னும் யாரும் கூப்பிடல')" style="background:#7f1d1d;color:#fff;border:1px solid #ef4444;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">❌ "இல்ல கூப்பிடல"</button>
+              <button type="button" onclick="window.__sendLiveCustomerUtterance('இப்போ பிஸியா இருக்கேன் அப்புறம் கூப்பிடுங்க')" style="background:#78350f;color:#fff;border:1px solid #f59e0b;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">⏳ "பிஸியா இருக்கேன்"</button>
+            </div>
+          </div>`;
+        liveMsg.innerHTML = callLogs.map((l) => `<div style="margin-bottom:4px;">${l}</div>`).join('') + quickPills;
+      };
 
-      // Check simulated response mode for this lead
+      const addCallLog = (htmlLine) => {
+        callLogs.push(htmlLine);
+        renderInteractivePanel();
+      };
+
+      addCallLog(`Dialing <strong>${escapeHtml(lead.name)} (${escapeHtml(lead.phone)})</strong> — 🔊 Greeting: "${escapeHtml(greeting)}"`);
+      const greetRes = await speakUtterance(greeting, false, true);
+
       if (lead.simMode === 'not_attended') {
         lead.status = 'NOT_ATTENDED';
         lead.answers = {};
@@ -923,27 +1240,155 @@
         lead.callSummary = 'Call Not Attended — Customer did not pick up / phone ringing no answer.';
         lead.calledAt = formatNow();
       } else {
-        // Ask each configured workflow question sequentially
-        const isPositiveLead = lead.simMode !== 'not_qualified';
-        lead.answers = {};
+        let earlyBusyExit = false;
 
-        for (let qIdx = 0; qIdx < (client.questions || []).length; qIdx++) {
-          const q = client.questions[qIdx];
-          if (liveMsg) {
-            liveMsg.innerHTML = `Asking <strong>${escapeHtml(lead.name)}</strong> — Q${qIdx + 1}: "${escapeHtml(q.text)}"`;
+        // If customer interrupted during greeting (e.g. asked "நீ யாரு?"), answer them first!
+        if (greetRes?.interrupted && greetRes.customerSpeech) {
+          let gIntent = window.__classifyTamilIntent ? window.__classifyTamilIntent(greetRes.customerSpeech, client.name) : { intent: 'QUESTION_WHO', action: 'REPEAT_CURRENT', spokenReply: `வணக்கம் சார், நான் ${client.name} கஸ்டமர் சப்போர்ட்ல இருந்து பேசுறேன்.` };
+          try {
+            const gRes = await fetch(`${API_CONFIG.BASE_URL}/llm/classify`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                replyText: greetRes.customerSpeech,
+                clientName: client.name,
+                questionText: greeting,
+                positiveKeywords: client.trainer?.positiveKeywords || '',
+                negativeKeywords: client.trainer?.negativeKeywords || '',
+              }),
+            });
+            if (gRes.ok) gIntent = await gRes.json();
+          } catch (_e) {}
+          addCallLog(`🗣️ <strong>Customer Interrupted Greeting:</strong> "${escapeHtml(greetRes.customerSpeech)}" ➡️ <strong>${escapeHtml(gIntent.intent)}</strong>`);
+          if (gIntent.action === 'END_CALL_BUSY') {
+            earlyBusyExit = true;
+            lead.status = 'NOT_ATTENDED';
+            lead.callSummary = `Customer busy during greeting: "${greetRes.customerSpeech}"`;
+            lead.calledAt = formatNow();
+            if (gIntent.spokenReply) {
+              addCallLog(`🔊 <strong>AI:</strong> "${escapeHtml(gIntent.spokenReply)}"`);
+              await speakUtterance(gIntent.spokenReply, false, false);
+            }
+          } else if (gIntent.spokenReply) {
+            addCallLog(`🔊 <strong>AI (Answering Customer):</strong> "${escapeHtml(gIntent.spokenReply)}"`);
+            await speakUtterance(gIntent.spokenReply, false, true);
           }
-          await new Promise((r) => setTimeout(r, 900));
-          lead.answers[q.id] = isPositiveLead ? 'YES' : 'NO';
         }
 
-        if (isPositiveLead) {
-          lead.status = 'QUALIFIED';
-          lead.callSummary = `Customer answered YES to all ${client.questions.length} questions. Interested and satisfied regarding ${lead.enquiry}.`;
-        } else {
-          lead.status = 'NOT_QUALIFIED';
-          lead.callSummary = `Customer responded NO / Not Interested regarding ${lead.enquiry}. Marked as Not Qualified.`;
+        if (!earlyBusyExit) {
+          lead.answers = {};
+          const questions = client.questions || [];
+          let earlyNoExit = false;
+
+          for (let qIdx = 0; qIdx < questions.length; qIdx++) {
+            const q = questions[qIdx];
+            let answeredThisQ = false;
+            let attempts = 0;
+
+            while (!answeredThisQ && attempts < 3) {
+              attempts++;
+              addCallLog(`🔊 <strong>Asking Q${qIdx + 1}:</strong> "${escapeHtml(q.text)}"`);
+              const qRes = await speakUtterance(q.text, false, true);
+
+              let customerSpeech = '';
+              if (qRes?.interrupted && qRes.customerSpeech) {
+                customerSpeech = qRes.customerSpeech;
+              } else if (typeof window.__listenForCustomerReplyClean === 'function') {
+                liveHeardText = 'Listening on Mic...';
+                renderInteractivePanel();
+                customerSpeech = await window.__listenForCustomerReplyClean((heard) => {
+                  liveHeardText = heard;
+                  const sp = document.getElementById('liveMicHeardSpan');
+                  if (sp) sp.textContent = `Hearing: "${heard}"`;
+                }, 4500);
+                liveHeardText = '';
+              }
+
+              // If user didn't speak into mic within 8.5s, fall back to lead's simMode so batch campaigns don't get stuck forever
+              if (!customerSpeech) {
+                const defaultAns = lead.simMode !== 'not_qualified' ? 'ஆமா சார் பேசுனாங்க' : 'இல்ல இன்னும் கூப்பிடல';
+                customerSpeech = defaultAns;
+                addCallLog(`ℹ️ <em>(No mic speech detected in 8.5s — using lead simulation: "${escapeHtml(customerSpeech)}")</em>`);
+              }
+
+              let nlu = window.__classifyTamilIntent
+                ? window.__classifyTamilIntent(customerSpeech, client.name)
+                : { intent: 'ANSWER_YES', action: 'NEXT_QUESTION', answer: 'YES', spokenReply: '' };
+
+              try {
+                const apiRes = await fetch(`${API_CONFIG.BASE_URL}/llm/classify`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    replyText: customerSpeech,
+                    clientName: client.name,
+                    questionText: q.text,
+                    positiveKeywords: client.trainer?.positiveKeywords || '',
+                    negativeKeywords: client.trainer?.negativeKeywords || '',
+                  }),
+                });
+                if (apiRes.ok) {
+                  nlu = await apiRes.json();
+                }
+              } catch (_e) {}
+
+              addCallLog(`🗣️ <strong>Customer Said:</strong> "${escapeHtml(customerSpeech)}" ➡️ <strong>${escapeHtml(nlu.intent)}</strong>`);
+
+              if (nlu.action === 'END_CALL_BUSY') {
+                earlyBusyExit = true;
+                answeredThisQ = true;
+                lead.status = 'NOT_ATTENDED';
+                lead.callSummary = nlu.summary || `Customer busy: "${customerSpeech}"`;
+                addCallLog(`🔊 <strong>AI (Closing - Busy):</strong> "${escapeHtml(nlu.spokenReply)}"`);
+                await speakUtterance(nlu.spokenReply, false, false);
+                break;
+              }
+
+              if (nlu.action === 'REPEAT_CURRENT') {
+                // Customer asked "நீ யாரு?", "எதுக்கு கால் பண்ணீங்க?", or "புரியல திரும்ப சொல்லுங்க"!
+                if (nlu.spokenReply) {
+                  addCallLog(`🔊 <strong>AI (Answering Customer):</strong> "${escapeHtml(nlu.spokenReply)}"`);
+                  await speakUtterance(nlu.spokenReply, false, true);
+                }
+                continue;
+              }
+
+              const ansLabel = nlu.answer === 'NO' ? 'NO' : 'YES';
+              lead.answers[q.id] = ansLabel;
+              answeredThisQ = true;
+
+              if (qIdx === 0 && ansLabel === 'NO') {
+                earlyNoExit = true;
+                lead.status = 'NOT_QUALIFIED';
+                lead.callSummary = `Customer responded NO ("${customerSpeech}") regarding ${lead.enquiry}. Marked as Not Qualified.`;
+                const closeNo = 'சரிங்க சார், நான் இப்பவே நம்ம டீலர்கிட்ட சொல்லி, இன்னைக்கே உங்களுக்கு கால் பண்ண சொல்றேன். ரொம்ப நன்றி சார்!';
+                addCallLog(`🔊 <strong>AI (Closing):</strong> "${escapeHtml(closeNo)}"`);
+                await speakUtterance(closeNo, false, false);
+                break;
+              }
+            }
+
+            if (earlyBusyExit || earlyNoExit) break;
+          }
+
+          if (!earlyBusyExit && !earlyNoExit) {
+            const allYes = Object.values(lead.answers).length > 0 && Object.values(lead.answers).every((v) => v === 'YES');
+            if (allYes) {
+              lead.status = 'QUALIFIED';
+              lead.callSummary = `Customer answered YES to all ${client.questions.length} questions regarding ${lead.enquiry}.`;
+              const closeYes = 'ரொம்ப நன்றி சார், உங்க பொன்னான நேரத்துக்கு மிக்க நன்றி, வணக்கம்!';
+              addCallLog(`🔊 <strong>AI (Closing):</strong> "${escapeHtml(closeYes)}"`);
+              await speakUtterance(closeYes, false, false);
+            } else {
+              lead.status = 'NOT_QUALIFIED';
+              lead.callSummary = `Customer responded NO / Needs follow-up regarding ${lead.enquiry}.`;
+              const closeNo = 'சரிங்க சார், நான் இப்பவே நம்ம டீலர்கிட்ட சொல்லி, இன்னைக்கே உங்களுக்கு கால் பண்ண சொல்றேன். ரொம்ப நன்றி சார்!';
+              addCallLog(`🔊 <strong>AI (Closing):</strong> "${escapeHtml(closeNo)}"`);
+              await speakUtterance(closeNo, false, false);
+            }
+          }
+          lead.calledAt = formatNow();
         }
-        lead.calledAt = formatNow();
       }
 
       await tryApiCall(API_CONFIG.ENDPOINTS.CALL_RESULT(client.id, lead.id), {
@@ -955,7 +1400,6 @@
       saveState();
       renderAll();
 
-      // If user clicked "Stop After Current Call", break cleanly right after finishing this call!
       if (state.stopAfterCurrentCall) {
         if (liveBadge) liveBadge.textContent = 'Stopped by User';
         if (liveMsg) {
@@ -968,9 +1412,6 @@
 
     if (!state.stopAfterCurrentCall) {
       if (liveBadge) liveBadge.textContent = 'Campaign Completed';
-      if (liveMsg) {
-        liveMsg.innerHTML = `Finished calling all pending leads for <strong>${escapeHtml(client.name)}</strong>.`;
-      }
       showToast(`Completed outbound calls for ${client.name}!`);
     }
 
@@ -1638,9 +2079,35 @@
       ?.addEventListener('click', exportOverallVerificationReportCsv);
   }
 
-  function handleLeadFileUpload(file) {
+  async function handleLeadFileUpload(file) {
     const client = getClientById(state.selectedOutboundClientId);
     if (!client) return;
+
+    if (file.name.toLowerCase().endsWith('.xlsx')) {
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await fetch(`${API_CONFIG.BASE_URL}/parse-xlsx`, { method: 'POST', body: fd });
+        if (res.ok) {
+          const data = await res.json();
+          const csvText = (data.rows || []).map((r) => r.join('\t')).join('\n');
+          const leads = parseRowsIntoLeads(csvText);
+          if (leads.length > 0) {
+            client.leads.push(...leads);
+            saveState();
+            await tryApiCall(API_CONFIG.ENDPOINTS.CLIENT_LEADS(client.id), {
+              method: 'POST',
+              body: JSON.stringify({ leads }),
+            });
+            renderAll();
+            showToast(`Uploaded ${leads.length} leads from Excel "${file.name}" to ${client.name}!`);
+            return;
+          }
+        }
+      } catch (_e) {
+        // fallback
+      }
+    }
 
     const reader = new FileReader();
     reader.onload = async (ev) => {
@@ -1662,10 +2129,448 @@
   }
 
   // ==================== BOOTSTRAP ====================
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     loadState();
+    try {
+      const res = await fetch(`${API_CONFIG.BASE_URL}/clients`);
+      if (res.ok) {
+        if (window.location.protocol === 'file:') {
+          window.location.replace('http://localhost:8000');
+          return;
+        }
+        const data = await res.json();
+        if (Array.isArray(data.clients) && data.clients.length > 0 && state.clients.length === 0) {
+          state.clients = data.clients;
+          saveState();
+        }
+        const dot = document.getElementById('apiConnectionDot');
+        const txt = document.getElementById('apiConnectionText');
+        if (dot) dot.style.background = '#10b981';
+        if (txt) txt.textContent = 'Voice Engine & Backend Connected';
+      }
+    } catch (_e) {}
+    if (state.clients.length === 0) {
+      state.clients = JSON.parse(JSON.stringify(DEFAULT_CLIENTS));
+      saveState();
+    }
     resetWorkflowEditorToNew();
     bindEvents();
+    document.getElementById('btnTestApprovedVoice')?.addEventListener('click', async () => {
+      const greet = document.getElementById('wfOpeningGreeting')?.value.trim() ||
+        'வணக்கம் ரமேஷ் சார், இது ஒரு வெரிபிகேஷன் கால், டாட்டா மோட்டார்ஸ்ல இருந்து பேசுறேன். நீங்க டாட்டா நெக்சான் வண்டி பத்தி விசாரிச்சிருந்தீங்க, நம்ம டீலர் உங்ககிட்ட பேசுனாங்களா?';
+      showToast('🔊 Playing Approved Voice #3 (VITS-Rasa-13 Conversational)...');
+      await speakUtterance(greet.replace(/\{lead_name\}/g, 'ரமேஷ்'), true);
+    });
+
+    document.getElementById('btnDialLivePhoneNow')?.addEventListener('click', async () => {
+      const phoneEl = document.getElementById('livePhoneDialInput');
+      const toPhone = (phoneEl?.value || '+918610057080').trim();
+      const client = getClientById(state.selectedOutboundClientId) || state.clients[0];
+      if (!client) return;
+      const lead = client.leads[0] || { id: 'LEAD-LIVE-1', name: 'ரமேஷ்', phone: toPhone };
+      const msgEl = document.getElementById('clientLiveCallMessage');
+      const badgeEl = document.getElementById('clientLiveStateBadge');
+      if (badgeEl) badgeEl.textContent = 'Dialing Live Mobile...';
+      if (msgEl) msgEl.innerHTML = `📞 Dialing <strong>${escapeHtml(toPhone)}</strong> via Twilio with Approved Tamil Voice (VITS-Rasa-13)...`;
+      showToast(`📞 Calling ${toPhone} now! Pick up your phone and press 1 after trial prompt.`);
+      try {
+        const res = await fetch(`${API_CONFIG.BASE_URL}/twilio/call`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clientId: client.id,
+            leadId: lead.id,
+            toPhone: toPhone,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          const errMsg = data.error || 'Make sure start_server.bat is running on http://localhost:8000';
+          if (msgEl) msgEl.innerHTML = `❌ Call Error: ${escapeHtml(errMsg)}`;
+          showToast(`❌ ${errMsg}`);
+          return;
+        }
+        const callSid = data.callSid;
+        if (msgEl) {
+          msgEl.innerHTML = `✅ Ringing <strong>${escapeHtml(toPhone)}</strong> (Call SID: <code>${escapeHtml(callSid)}</code>)...<br/>👉 <em>Pick up phone, press <strong>1</strong> after trial intro, and speak in Tamil!</em>`;
+        }
+        // Poll live call progress
+        const pollTimer = setInterval(async () => {
+          try {
+            const stRes = await fetch(`${API_CONFIG.BASE_URL}/twilio/call-status/${callSid}`);
+            if (!stRes.ok) return;
+            const stData = await stRes.json();
+            if (stData.ok && Array.isArray(stData.logs)) {
+              if (msgEl) msgEl.innerHTML = stData.logs.map((l) => `<div>${escapeHtml(l)}</div>`).join('');
+              if (stData.done) {
+                clearInterval(pollTimer);
+                if (badgeEl) badgeEl.textContent = stData.finalStatus;
+                lead.status = stData.finalStatus;
+                lead.answers = stData.answers || lead.answers;
+                lead.calledAt = formatNow();
+                saveState();
+                renderAll();
+                showToast(`🎉 Live Phone Call Completed: ${stData.finalStatus}`);
+              }
+            }
+          } catch (_e) {}
+        }, 2000);
+      } catch (_err) {
+        if (msgEl) {
+          msgEl.innerHTML = `⚠️ Please open <strong>http://localhost:8000</strong> (run <code>start_server.bat</code>) to place real Twilio mobile calls!`;
+        }
+        showToast('⚠️ Run start_server.bat and open http://localhost:8000 for live mobile calls!');
+      }
+    });
+    // ==================== LIVE 2-WAY INTERACTIVE MIC CALL (WITH SMART TAMIL NLU & BARGE-IN) ====================
+    let manualCustomerOverrideResolver = null;
+    let pendingManualUtterance = '';
+
+    window.__sendLiveCustomerUtterance = function (utteranceText) {
+      const clean = String(utteranceText || '').trim();
+      if (!clean) return;
+      if (typeof activeBargeInHandler === 'function') {
+        const fn = activeBargeInHandler;
+        activeBargeInHandler = null;
+        fn(clean);
+        return;
+      }
+      stopActiveAudioImmediately();
+      if (typeof manualCustomerOverrideResolver === 'function') {
+        const fn = manualCustomerOverrideResolver;
+        manualCustomerOverrideResolver = null;
+        fn(clean);
+      } else {
+        pendingManualUtterance = clean;
+      }
+    };
+
+    window.__classifyTamilIntent = classifyTamilIntentLocal;
+    function classifyTamilIntentLocal(replyText, clientName) {
+      const low = String(replyText || '').trim().toLowerCase();
+      const whoWords = ['நீ யாரு', 'நீங்க யாரு', 'யாரு நீ', 'யாரு நீங்க', 'யார் நீங்க', 'யாரு பேசுற', 'யார் பேசுற', 'எங்க இருந்து', 'எந்த கம்பெனி', 'nee yaaru', 'neenga yaaru', 'yaaru', 'who are you', 'who is this', 'yaru'];
+      if (whoWords.some((w) => low.includes(w))) {
+        return {
+          intent: 'QUESTION_WHO',
+          action: 'REPEAT_CURRENT',
+          answer: null,
+          spokenReply: `வணக்கம் சார் நான் ${clientName} கஸ்டமர் சப்போர்ட்ல இருந்து பேசுறேன், உங்க என்கொயரி வெரிபிகேஷனுக்காக கால் பண்ணிருக்கேன்.`,
+        };
+      }
+      const whyWords = ['எதுக்கு', 'எதுக்காக', 'என்ன விஷயம்', 'ஏன் கால்', 'ஏன் கூப்பி', 'என்ன வேணும்', 'edhuku', 'enna vishayam', 'why call'];
+      if (whyWords.some((w) => low.includes(w))) {
+        return {
+          intent: 'QUESTION_WHY',
+          action: 'REPEAT_CURRENT',
+          answer: null,
+          spokenReply: `நீங்க நம்ம ${clientName}ல விசாரிச்சிருந்தீங்க சார், அது சம்பந்தமா உங்க கருத்தை கேட்டு நோட் பண்ண தான் கால் பண்ணிருக்கேன்.`,
+        };
+      }
+      const repeatWords = ['புரியல', 'புரியவில்லை', 'கேக்கல', 'கேட்கல', 'என்ன சொன்னீங்க', 'என்னது', 'திரும்ப சொல்லு', 'இன்னொரு வாட்டி', 'puriyala', 'kekkala', 'repeat', 'enna sonninga'];
+      if (repeatWords.some((w) => low.includes(w))) {
+        return {
+          intent: 'REPEAT_REQUEST',
+          action: 'REPEAT_CURRENT',
+          answer: null,
+          spokenReply: 'மன்னிக்கவும் சார் நான் திரும்பத் தெளிவா சொல்றேன்.',
+        };
+      }
+      const busyWords = ['பிஸி', 'பிசி', 'வேலையா இருக்கேன்', 'அப்புறம் கூப்பி', 'அப்புறமா கூப்பி', 'மீட்டிங்', 'வண்டியில', 'டிரைவிங்', 'busy', 'call later', 'appuram'];
+      if (busyWords.some((w) => low.includes(w))) {
+        return {
+          intent: 'BUSY_CALLBACK',
+          action: 'END_CALL_BUSY',
+          answer: 'BUSY',
+          spokenReply: 'சரிங்க சார் டிஸ்டர்ப் பண்ணதுக்கு மன்னிக்கவும், நான் அப்புறமா உங்களுக்கு கால் பண்றேன், ரொம்ப நன்றி சார்!',
+        };
+      }
+      const negWords = ['இல்ல', 'இல்லை', 'பேசல', 'கூப்பிடல', 'வேண்டாம்', 'வேணாம்', 'திருப்தி இல்ல', 'பிடிக்கல', 'வரல', 'illa', 'no', 'not', 'pesala', 'koopidala', 'venam'];
+      if (negWords.some((w) => low.includes(w))) {
+        return {
+          intent: 'ANSWER_NO',
+          action: 'NEXT_QUESTION',
+          answer: 'NO',
+          spokenReply: '',
+        };
+      }
+      const posWords = ['ஆமா', 'ஆமாம்', 'பேசுனாங்க', 'பேசினாங்க', 'சொல்லிட்டாங்க', 'சொன்னாங்க', 'கூப்பிட்டாங்க', 'புரிஞ்சது', 'திருப்தி', 'ஓகே', 'சரி', 'வரேன்', 'நல்லா', 'aama', 'yes', 'spoke', 'ok', 'okay', 'satisfied', 'sari', 'pesunanga'];
+      if (posWords.some((w) => low.includes(w))) {
+        return {
+          intent: 'ANSWER_YES',
+          action: 'NEXT_QUESTION',
+          answer: 'YES',
+          spokenReply: '',
+        };
+      }
+      return {
+        intent: 'CLARIFY',
+        action: 'REPEAT_CURRENT',
+        answer: null,
+        spokenReply: `வணக்கம் சார் நான் ${clientName} வெரிபிகேஷன் டீம்ல இருந்து பேசுறேன்.`,
+      };
+    }
+
+    window.__listenForCustomerReplyClean = listenForCustomerReplyClean;
+    function listenForCustomerReplyClean(onLiveInterimUpdate, timeoutMs = 9000) {
+      return new Promise((resolve) => {
+        let finished = false;
+        let rec = null;
+        let silenceTimer = null;
+        let finalStr = '';
+        if (pendingManualUtterance) {
+          const p = pendingManualUtterance;
+          pendingManualUtterance = '';
+          resolve(p);
+          return;
+        }
+        let interimStr = '';
+
+        const done = (val) => {
+          if (finished) return;
+          finished = true;
+          manualCustomerOverrideResolver = null;
+          if (silenceTimer) clearTimeout(silenceTimer);
+          try { if (rec) rec.stop(); } catch (_e) {}
+          resolve(String(val || '').trim());
+        };
+
+        manualCustomerOverrideResolver = (manualText) => {
+          clearTimeout(maxTimer);
+          done(manualText);
+        };
+
+        const maxTimer = setTimeout(() => {
+          done(finalStr || interimStr);
+        }, timeoutMs);
+
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRec) return;
+
+        // Wait 220ms after speaker audio ends so speaker room reverb does not pollute mic STT
+        setTimeout(() => {
+          if (finished) return;
+          try {
+            rec = new SpeechRec();
+            rec.lang = 'ta-IN';
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.maxAlternatives = 1;
+
+            rec.onresult = (ev) => {
+              interimStr = '';
+              for (let i = ev.resultIndex; i < ev.results.length; i++) {
+                const t = ev.results[i][0].transcript;
+                if (ev.results[i].isFinal) finalStr += ' ' + t;
+                else interimStr += t;
+              }
+              const currentHeard = (finalStr + ' ' + interimStr).trim();
+              if (typeof onLiveInterimUpdate === 'function') {
+                onLiveInterimUpdate(currentHeard);
+              }
+              if (currentHeard.length > 0) {
+                if (silenceTimer) clearTimeout(silenceTimer);
+                silenceTimer = setTimeout(() => {
+                  clearTimeout(maxTimer);
+                  done(currentHeard);
+                }, finalStr.trim() ? 350 : 650);
+              }
+            };
+            rec.onerror = () => {};
+            rec.onend = () => {
+              if (!finished && (finalStr || interimStr).trim().length > 0) {
+                clearTimeout(maxTimer);
+                done(finalStr || interimStr);
+              }
+            };
+            rec.start();
+          } catch (_e) {}
+        }, 80);
+      });
+    }
+
+    document.getElementById('btnStartLiveMicCall')?.addEventListener('click', async () => {
+      const client = getClientById(state.selectedOutboundClientId) || state.clients[0];
+      if (!client) return;
+      const lead = client.leads[0] || { id: 'LEAD-MIC-1', name: 'ரமேஷ்', phone: '+918610057080', enquiry: 'TATA Nexon' };
+      const msgEl = document.getElementById('clientLiveCallMessage');
+      const badgeEl = document.getElementById('clientLiveStateBadge');
+
+      const logs = [];
+      let liveHeardText = '';
+
+      const renderLiveCallPanel = () => {
+        if (!msgEl) return;
+        const quickPillsHtml = `
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.12);">
+            <div style="font-size:11px;color:#9ca3af;margin-bottom:5px;">
+              🎙️ <strong>Speak in Tamil into Mic</strong> (or click/type below to test any customer question/interruption):
+              <span id="liveMicHeardSpan" style="color:#fbbf24;font-weight:600;margin-left:6px;">${liveHeardText ? 'Hearing: "' + escapeHtml(liveHeardText) + '"' : ''}</span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;">
+              <button type="button" onclick="window.__sendLiveCustomerUtterance('நீ யாரு எங்க இருந்து பேசுறீங்க?')" style="background:#374151;color:#fff;border:1px solid #4b5563;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">❓ "நீ யாரு?"</button>
+              <button type="button" onclick="window.__sendLiveCustomerUtterance('எதுக்கு கால் பண்ணீங்க?')" style="background:#374151;color:#fff;border:1px solid #4b5563;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">❓ "எதுக்கு கால் பண்ணீங்க?"</button>
+              <button type="button" onclick="window.__sendLiveCustomerUtterance('புரியல இன்னொரு வாட்டி சொல்லுங்க')" style="background:#374151;color:#fff;border:1px solid #4b5563;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">🔁 "புரியல திரும்ப சொல்லுங்க"</button>
+              <button type="button" onclick="window.__sendLiveCustomerUtterance('ஆமா சார் பேசுனாங்க திருப்தியா இருந்தது')" style="background:#065f46;color:#fff;border:1px solid #10b981;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">✅ "ஆமா பேசுனாங்க"</button>
+              <button type="button" onclick="window.__sendLiveCustomerUtterance('இல்ல இன்னும் யாரும் கூப்பிடல')" style="background:#7f1d1d;color:#fff;border:1px solid #ef4444;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">❌ "இல்ல கூப்பிடல"</button>
+              <button type="button" onclick="window.__sendLiveCustomerUtterance('இப்போ பிஸியா இருக்கேன் அப்புறம் கூப்பிடுங்க')" style="background:#78350f;color:#fff;border:1px solid #f59e0b;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">⏳ "பிஸியா இருக்கேன்"</button>
+            </div>
+          </div>`;
+        msgEl.innerHTML = logs.map((l) => `<div style="margin-bottom:4px;">${l}</div>`).join('') + quickPillsHtml;
+      };
+
+      const updateLogs = (line) => {
+        logs.push(line);
+        renderLiveCallPanel();
+      };
+
+      if (badgeEl) badgeEl.textContent = '🎙️ Live 2-Way Call Active';
+      const greet = (client.openingGreeting || 'வணக்கம் {lead_name} சார்.')
+        .replace(/\{lead_name\}/g, lead.name);
+
+      updateLogs(`🔊 <strong>AI (Greeting):</strong> "${escapeHtml(greet)}"`);
+      const greetRes = await speakUtterance(greet, true, true);
+      if (greetRes?.interrupted && greetRes.customerSpeech) {
+        let gIntent = classifyTamilIntentLocal(greetRes.customerSpeech, client.name);
+        try {
+          const gRes = await fetch(`${API_CONFIG.BASE_URL}/llm/classify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              replyText: greetRes.customerSpeech,
+              clientName: client.name,
+              questionText: greet,
+              positiveKeywords: client.trainer?.positiveKeywords || '',
+              negativeKeywords: client.trainer?.negativeKeywords || '',
+            }),
+          });
+          if (gRes.ok) gIntent = await gRes.json();
+        } catch (_e) {}
+        updateLogs(`🗣️ <strong>Customer Interrupted Greeting:</strong> "${escapeHtml(greetRes.customerSpeech)}" ➡️ <em>${gIntent.intent}</em>`);
+        if (gIntent.action === 'END_CALL_BUSY') {
+          updateLogs(`🔊 <strong>AI:</strong> "${escapeHtml(gIntent.spokenReply)}"`);
+          await speakUtterance(gIntent.spokenReply, true, false);
+          lead.status = 'NOT_ATTENDED';
+          lead.callSummary = `Customer busy during greeting ("${greetRes.customerSpeech}").`;
+          lead.calledAt = formatNow();
+          if (badgeEl) badgeEl.textContent = 'NOT_ATTENDED';
+          saveState();
+          renderAll();
+          return;
+        }
+        if (gIntent.spokenReply) {
+          updateLogs(`🔊 <strong>AI (Answering Customer):</strong> "${escapeHtml(gIntent.spokenReply)}"`);
+          await speakUtterance(gIntent.spokenReply, true, true);
+        }
+      }
+
+      lead.answers = {};
+      const questions = client.questions || [];
+      let earlyExit = false;
+
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        let questionAnswered = false;
+        let attempts = 0;
+
+        while (!questionAnswered && attempts < 3) {
+          attempts++;
+          updateLogs(`🤖 <strong>AI (Q${i + 1}):</strong> "${escapeHtml(q.text)}"`);
+
+          const qRes = await speakUtterance(q.text, true, true);
+          let customerSpeech = '';
+          if (qRes?.interrupted && qRes.customerSpeech) {
+            customerSpeech = qRes.customerSpeech;
+          } else {
+            liveHeardText = 'Listening...';
+            renderLiveCallPanel();
+            customerSpeech = await listenForCustomerReplyClean((heard) => {
+              liveHeardText = heard;
+              const sp = document.getElementById('liveMicHeardSpan');
+              if (sp) sp.textContent = `Hearing: "${heard}"`;
+            }, 9000);
+            liveHeardText = '';
+          }
+
+          if (!customerSpeech) {
+            updateLogs(`⚠️ <em>No speech heard on Mic. Repeating Q${i + 1}...</em>`);
+            continue;
+          }
+
+          // Classify Customer's Tamil Intent via Backend API (with instant local fallback)
+          let nlu = classifyTamilIntentLocal(customerSpeech, client.name);
+          try {
+            const apiRes = await fetch(`${API_CONFIG.BASE_URL}/llm/classify`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                replyText: customerSpeech,
+                clientName: client.name,
+                questionText: q.text,
+                positiveKeywords: client.trainer?.positiveKeywords || '',
+                negativeKeywords: client.trainer?.negativeKeywords || '',
+              }),
+            });
+            if (apiRes.ok) {
+              nlu = await apiRes.json();
+            }
+          } catch (_e) {}
+
+          updateLogs(`🗣️ <strong>Customer Said:</strong> "${escapeHtml(customerSpeech)}" ➡️ <strong>${escapeHtml(nlu.intent)}</strong>`);
+
+          if (nlu.action === 'END_CALL_BUSY') {
+            earlyExit = true;
+            questionAnswered = true;
+            lead.status = 'NOT_ATTENDED';
+            lead.callSummary = nlu.summary || `Customer busy: "${customerSpeech}"`;
+            updateLogs(`🔊 <strong>AI (Closing - Busy):</strong> "${escapeHtml(nlu.spokenReply)}"`);
+            await speakUtterance(nlu.spokenReply, true, false);
+            break;
+          }
+
+          if (nlu.action === 'REPEAT_CURRENT') {
+            // Customer asked "நீ யாரு?", "எதுக்கு கால் பண்ணீங்க?", or "புரியல திரும்ப சொல்லுங்க"!
+            // Speak the smart Tamil explanation and THEN loop to re-ask the SAME question!
+            if (nlu.spokenReply) {
+              updateLogs(`🔊 <strong>AI (Replying to Customer):</strong> "${escapeHtml(nlu.spokenReply)}"`);
+              await speakUtterance(nlu.spokenReply, true, true);
+            }
+            continue;
+          }
+
+          // Customer answered YES or NO!
+          const ansLabel = nlu.answer === 'NO' ? 'NO' : 'YES';
+          lead.answers[q.id] = ansLabel;
+          questionAnswered = true;
+
+          if (i === 0 && ansLabel === 'NO') {
+            earlyExit = true;
+            lead.status = 'NOT_QUALIFIED';
+            lead.callSummary = `Live Call: Customer replied "${customerSpeech}" -> NOT_QUALIFIED`;
+            const closeNo = 'சரிங்க சார், நான் இப்பவே நம்ம டீலர்கிட்ட சொல்லி, இன்னைக்கே உங்களுக்கு கால் பண்ண சொல்றேன். ரொம்ப நன்றி சார்!';
+            updateLogs(`🔊 <strong>AI (Closing):</strong> "${escapeHtml(closeNo)}"`);
+            await speakUtterance(closeNo, true, false);
+            break;
+          }
+        }
+
+        if (earlyExit) break;
+      }
+
+      if (!earlyExit) {
+        const allYes = Object.values(lead.answers).length > 0 && Object.values(lead.answers).every((v) => v === 'YES');
+        lead.status = allYes ? 'QUALIFIED' : 'NOT_QUALIFIED';
+        lead.callSummary = `Live Call (${lead.status}): ` + Object.entries(lead.answers).map(([k, v]) => `${k}=${v}`).join(', ');
+        const closeYes = 'ரொம்ப நன்றி சார், உங்க பொன்னான நேரத்துக்கு மிக்க நன்றி, வணக்கம்!';
+        updateLogs(`🔊 <strong>AI (Closing):</strong> "${escapeHtml(closeYes)}"`);
+        await speakUtterance(closeYes, true, false);
+      }
+
+      lead.calledAt = formatNow();
+      if (badgeEl) badgeEl.textContent = lead.status;
+      saveState();
+      renderAll();
+      showToast(`🎉 Call Finished: ${lead.status}`);
+    });
     renderAll();
   });
 })();
