@@ -1001,22 +1001,70 @@
 
     const myGenId = ++currentSpeechGenId;
     stopActiveAudioImmediately();
+    if (typeof window.__stopGlobalSpeechRec === 'function') window.__stopGlobalSpeechRec();
 
     let playUrl = null;
     let isBlobUrl = false;
-    try {
-      const res = await fetch(API_CONFIG.BASE_URL + '/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-        body: JSON.stringify({ text }),
-      });
-      if (res.ok) {
-        const blob = await res.blob();
-        playUrl = URL.createObjectURL(blob);
-        isBlobUrl = true;
+
+    // 1. Try /api/tts (or http://localhost:8000/api/tts if frontend is on port 4500)
+    const ttsEndpoints = [API_CONFIG.BASE_URL + '/tts'];
+    if (window.location.port && window.location.port !== '8000') {
+      ttsEndpoints.push('http://localhost:8000/api/tts');
+    }
+    for (const ep of ttsEndpoints) {
+      try {
+        const res = await fetch(ep, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+          body: JSON.stringify({ text }),
+        });
+        if (res.ok && (res.headers.get('content-type') || '').includes('audio')) {
+          const blob = await res.blob();
+          if (blob.size > 200) {
+            playUrl = URL.createObjectURL(blob);
+            isBlobUrl = true;
+            break;
+          }
+        }
+      } catch (_err) {}
+    }
+
+    // 2. Fallback to pre-generated AI4Bharat VITS-Rasa-13 .wav in frontend/audio/
+    if (!playUrl) {
+      const t = String(text || '').trim();
+      if (t.includes('கஸ்டமர் சப்போர்ட்ல இருந்து பேசுறேன்')) {
+        playUrl = t.includes('ஹீலிங்') ? 'audio/nlu_who_heal.wav' : 'audio/nlu_who_tata.wav';
+      } else if (t.includes('கருத்தை கேட்டு நோட் பண்ண')) {
+        playUrl = t.includes('ஹீலிங்') ? 'audio/nlu_why_heal.wav' : 'audio/nlu_why_tata.wav';
+      } else if (t.includes('திரும்பத் தெளிவா சொல்றேன்') || t.includes('திரும்ப தெளிவா சொல்றேன்')) {
+        playUrl = 'audio/nlu_repeat.wav';
+      } else if (t.includes('டிஸ்டர்ப் பண்ணதுக்கு மன்னிக்கவும்') || t.includes('அப்புறமா உங்களுக்கு கால் பண்றேன்')) {
+        playUrl = 'audio/nlu_busy.wav';
+      } else if (t.includes('வெரிபிகேஷன் டீம்ல இருந்து பேசுறேன்')) {
+        playUrl = 'audio/nlu_clarify_tata.wav';
+      } else if (t.includes('பொன்னான நேரத்துக்கு') || t.includes('நல்ல நாளா அமையட்டும்')) {
+        playUrl = 'audio/closing_yes.wav';
+      } else if (t.includes('இன்னைக்கே உங்களுக்கு கால் பண்ண சொல்றேன்') || t.includes('உங்களை கூப்பிட சொல்றேன்')) {
+        playUrl = 'audio/closing_no.wav';
+      } else if (t.includes('வணக்கம்') && (t.includes('டாட்டா') || t.includes('TATA'))) {
+        if (t.includes('நெக்சான்') && t.includes('பேசுனாங்களா')) playUrl = 'audio/test_voice_sample.wav';
+        else if (t.includes('சுரேஷ்')) playUrl = 'audio/tata_greet_suresh.wav';
+        else playUrl = 'audio/tata_greet_ramesh.wav';
+      } else if (t.includes('வணக்கம்') && (t.includes('ஹீலிங்') || t.includes('Healing'))) {
+        playUrl = 'audio/heal_greet_karthik.wav';
+      } else if (t.includes('நெக்சான்') || t.includes('டீலர் உங்ககிட்ட பேசுனாங்களா')) {
+        playUrl = 'audio/tata_q1.wav';
+      } else if (t.includes('வண்டி விவரம்') || t.includes('திருப்தியா இருந்ததா')) {
+        playUrl = 'audio/tata_q2.wav';
+      } else if (t.includes('சர்வீஸ் பத்தி விசாரிச்சிருந்தீங்க') || t.includes('டீம் உங்ககிட்ட பேசுனாங்களா')) {
+        playUrl = 'audio/heal_q1.wav';
+      } else if (t.includes('கன்சல்டேஷன் அப்பாயின்ட்மென்ட்') || t.includes('புக் பண்ணிக்கலாமா')) {
+        playUrl = 'audio/heal_q2.wav';
       }
-    } catch (_err) {}
-    if (!playUrl) return { interrupted: false, customerSpeech: '' };
+    }
+
+    // 3. Fallback to browser speechSynthesis if custom text and backend is offline
+    if (!playUrl && !('speechSynthesis' in window)) return { interrupted: false, customerSpeech: '' };
 
     // If another utterance was requested while fetch('/api/tts') was in flight, abort this older audio!
     if (myGenId !== currentSpeechGenId) {
@@ -1044,7 +1092,8 @@
       doneSpeech = true;
       activeBargeInHandler = null;
       if (silenceTimer) clearTimeout(silenceTimer);
-      try { if (rec) rec.stop(); } catch (_e) {}
+      if (typeof window.__stopGlobalSpeechRec === 'function') window.__stopGlobalSpeechRec();
+      try { if (rec) rec.abort(); } catch (_e) {}
       if (speechFinishedResolve) {
         const resultText = overrideText !== undefined ? overrideText : (finalTranscript || interimTranscript).trim();
         speechFinishedResolve(resultText);
@@ -1078,6 +1127,7 @@
       if (SpeechRec) {
         try {
           rec = new SpeechRec();
+          if (typeof window.__setGlobalSpeechRec === 'function') window.__setGlobalSpeechRec(rec);
           rec.lang = 'ta-IN';
           rec.continuous = true;
           rec.interimResults = true;
@@ -1106,37 +1156,69 @@
       }
     }
 
-    await new Promise((resolveAudio) => {
-      const audio = new Audio(playUrl);
-      activeAudioPlayer = audio;
-      activeAudioResolve = (resObj) => {
-        if (isBlobUrl) URL.revokeObjectURL(playUrl);
-        resolveAudio(resObj);
-      };
-      audio.onended = () => {
-        activeAudioPlayer = null;
-        if (activeAudioResolve) {
-          const fn = activeAudioResolve;
-          activeAudioResolve = null;
-          fn({ interrupted: false });
-        }
-      };
-      audio.onerror = () => {
-        activeAudioPlayer = null;
-        if (activeAudioResolve) {
-          const fn = activeAudioResolve;
-          activeAudioResolve = null;
-          fn({ interrupted: false });
-        }
-      };
-      audio.play().catch(() => {
-        if (activeAudioResolve) {
-          const fn = activeAudioResolve;
-          activeAudioResolve = null;
-          fn({ interrupted: false });
+    if (playUrl) {
+      await new Promise((resolveAudio) => {
+        const audio = new Audio(playUrl);
+        activeAudioPlayer = audio;
+        activeAudioResolve = (resObj) => {
+          if (isBlobUrl) URL.revokeObjectURL(playUrl);
+          resolveAudio(resObj);
+        };
+        audio.onended = () => {
+          activeAudioPlayer = null;
+          if (activeAudioResolve) {
+            const fn = activeAudioResolve;
+            activeAudioResolve = null;
+            fn({ interrupted: false });
+          }
+        };
+        audio.onerror = () => {
+          activeAudioPlayer = null;
+          if (activeAudioResolve) {
+            const fn = activeAudioResolve;
+            activeAudioResolve = null;
+            fn({ interrupted: false });
+          }
+        };
+        audio.play().catch(() => {
+          if (activeAudioResolve) {
+            const fn = activeAudioResolve;
+            activeAudioResolve = null;
+            fn({ interrupted: false });
+          }
+        });
+      });
+    } else if ('speechSynthesis' in window) {
+      await new Promise((resolveTts) => {
+        try {
+          window.speechSynthesis.cancel();
+          const utter = new SpeechSynthesisUtterance(text);
+          utter.lang = 'ta-IN';
+          utter.rate = 0.95;
+          activeAudioResolve = (resObj) => {
+            try { window.speechSynthesis.cancel(); } catch (_e) {}
+            resolveTts(resObj);
+          };
+          utter.onend = () => {
+            if (activeAudioResolve) {
+              const fn = activeAudioResolve;
+              activeAudioResolve = null;
+              fn({ interrupted: false });
+            }
+          };
+          utter.onerror = () => {
+            if (activeAudioResolve) {
+              const fn = activeAudioResolve;
+              activeAudioResolve = null;
+              fn({ interrupted: false });
+            }
+          };
+          window.speechSynthesis.speak(utter);
+        } catch (_e) {
+          resolveTts({ interrupted: false });
         }
       });
-    });
+    }
 
     if (wasInterrupted) {
       capturedSpeech = await speechFinishedPromise;
@@ -2310,6 +2392,35 @@
       };
     }
 
+    let globalSpeechRecInstance = null;
+    window.__setGlobalSpeechRec = function (r) {
+      globalSpeechRecInstance = r;
+    };
+    window.__stopGlobalSpeechRec = function () {
+      if (globalSpeechRecInstance) {
+        try {
+          globalSpeechRecInstance.onresult = null;
+          globalSpeechRecInstance.onend = null;
+          globalSpeechRecInstance.onerror = null;
+          globalSpeechRecInstance.abort();
+        } catch (_e) {}
+        globalSpeechRecInstance = null;
+      }
+    };
+
+    async function ensureMicrophoneAccess() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Release stream tracks immediately so SpeechRecognition has exclusive access to mic
+        stream.getTracks().forEach((t) => t.stop());
+        return true;
+      } catch (_err) {
+        showToast('⚠️ Microphone permission denied or no mic connected. Please allow mic access in browser.');
+        return false;
+      }
+    }
+
     window.__listenForCustomerReplyClean = listenForCustomerReplyClean;
     function listenForCustomerReplyClean(onLiveInterimUpdate, timeoutMs = 9000) {
       return new Promise((resolve) => {
@@ -2330,7 +2441,8 @@
           finished = true;
           manualCustomerOverrideResolver = null;
           if (silenceTimer) clearTimeout(silenceTimer);
-          try { if (rec) rec.stop(); } catch (_e) {}
+          window.__stopGlobalSpeechRec();
+          try { if (rec) rec.abort(); } catch (_e) {}
           resolve(String(val || '').trim());
         };
 
@@ -2346,11 +2458,13 @@
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRec) return;
 
-        // Wait 220ms after speaker audio ends so speaker room reverb does not pollute mic STT
-        setTimeout(() => {
+        window.__stopGlobalSpeechRec();
+
+        const startRecognitionInstance = () => {
           if (finished) return;
           try {
             rec = new SpeechRec();
+            window.__setGlobalSpeechRec(rec);
             rec.lang = 'ta-IN';
             rec.continuous = true;
             rec.interimResults = true;
@@ -2372,23 +2486,46 @@
                 silenceTimer = setTimeout(() => {
                   clearTimeout(maxTimer);
                   done(currentHeard);
-                }, finalStr.trim() ? 350 : 650);
+                }, finalStr.trim() ? 450 : 750);
               }
             };
-            rec.onerror = () => {};
+
+            rec.onerror = (errEv) => {
+              if (errEv && (errEv.error === 'not-allowed' || errEv.error === 'service-not-allowed')) {
+                if (typeof onLiveInterimUpdate === 'function') {
+                  onLiveInterimUpdate('⚠️ Mic blocked in browser — click lock icon in address bar to Allow Microphone');
+                }
+              }
+            };
+
             rec.onend = () => {
-              if (!finished && (finalStr || interimStr).trim().length > 0) {
+              if (finished) return;
+              if ((finalStr || interimStr).trim().length > 0) {
                 clearTimeout(maxTimer);
                 done(finalStr || interimStr);
+              } else {
+                // Auto-restart recognition if Chrome ended early on silence while listening window is still active!
+                setTimeout(() => {
+                  if (!finished) startRecognitionInstance();
+                }, 150);
               }
             };
+
             rec.start();
-          } catch (_e) {}
-        }, 80);
+          } catch (_e) {
+            setTimeout(() => {
+              if (!finished) startRecognitionInstance();
+            }, 250);
+          }
+        };
+
+        // Wait 280ms after speaker audio ends so previous SpeechRecognition releases the mic cleanly
+        setTimeout(startRecognitionInstance, 280);
       });
     }
 
     document.getElementById('btnStartLiveMicCall')?.addEventListener('click', async () => {
+      await ensureMicrophoneAccess();
       const client = getClientById(state.selectedOutboundClientId) || state.clients[0];
       if (!client) return;
       const lead = client.leads[0] || { id: 'LEAD-MIC-1', name: 'ரமேஷ்', phone: '+918610057080', enquiry: 'TATA Nexon' };

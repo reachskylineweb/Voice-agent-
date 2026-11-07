@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Reach AI Voice — Multi-Workflow Outbound Dashboard (Frontend UI)",
   "scripts": {
-    "dev": "node -e \"const http=require('http'),fs=require('fs'),path=require('path');const mime={'.html':'text/html;charset=utf-8','.css':'text/css;charset=utf-8','.js':'application/javascript;charset=utf-8','.json':'application/json','.svg':'image/svg+xml'};http.createServer((req,res)=>{let u=req.url.split('?')[0];if(u==='/')u='/index.html';const f=path.join(__dirname,u);if(fs.existsSync(f)&&fs.statSync(f).isFile()){res.writeHead(200,{'Content-Type':mime[path.extname(f)]||'text/plain'});fs.createReadStream(f).pipe(res);}else{res.writeHead(404);res.end('Not found');}}).listen(4500,()=>console.log('\\n🚀 Reach AI Voice Frontend UI running at http://localhost:4500\\n'));\"",
+    "dev": "node -e \"const http=require('http'),fs=require('fs'),path=require('path');const mime={'.html':'text/html;charset=utf-8','.css':'text/css;charset=utf-8','.js':'application/javascript;charset=utf-8','.json':'application/json','.svg':'image/svg+xml','.wav':'audio/wav','.mp3':'audio/mpeg','.png':'image/png','.jpg':'image/jpeg'};http.createServer((req,res)=>{let u=decodeURIComponent(req.url.split('?')[0]);if(u==='/')u='/index.html';const f=path.join(__dirname,u);if(fs.existsSync(f)&&fs.statSync(f).isFile()){res.writeHead(200,{'Content-Type':mime[path.extname(f)]||'application/octet-stream','Cache-Control':'no-cache'});fs.createReadStream(f).pipe(res);}else{res.writeHead(404);res.end('Not found');}}).listen(4500,()=>console.log('\\n🚀 Reach AI Voice Frontend UI running at http://localhost:4500\\n'));\"",
     "start": "npm run dev"
   }
 }

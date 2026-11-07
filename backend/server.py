@@ -13,9 +13,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from backend.tts_engine import TamilVits13Engine
 
-BASE_DIR = r"e:\Ai Voice agent"
-FRONTEND_DIR = os.path.join(BASE_DIR, "ui_repo", "frontend")
-DB_JSON_PATH = os.path.join(BASE_DIR, "backend", "db_state.json")
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = r"e:\Ai Voice agent" if os.path.exists(r"e:\Ai Voice agent\models") else REPO_ROOT
+FRONTEND_DIR = os.path.join(REPO_ROOT, "frontend")
+DB_JSON_PATH = os.path.join(REPO_ROOT, "backend", "db_state.json")
 
 app = FastAPI(title="Reach AI Voice — Outbound Campaign & Workflow Server")
 app.add_middleware(
