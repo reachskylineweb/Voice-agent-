@@ -307,10 +307,7 @@
                   <h3 class="panel-heading">3. Outbound Voice Agent Control</h3>
                   <span class="panel-caption">Calls leads one by one and fills question answers &amp; call summary</span>
                 </div>
-                <label class="audio-switch" title="Speak call script aloud using browser TTS">
-                  <input type="checkbox" id="chkLiveTts" checked />
-                  <span>Speak Audio</span>
-                </label>
+                <input type="checkbox" id="chkLiveTts" checked style="display:none;" />
               </div>
 
               <div class="start-stop-row">
@@ -322,25 +319,25 @@
                 </button>
               </div>
 
-              <!-- Instant Real Mobile Call Bar (Twilio + Approved VITS-Rasa-13 Voice) -->
-              <div style="margin-top:10px;padding:10px;border-radius:8px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);">
-                <div style="font-size:12px;font-weight:600;color:#10b981;margin-bottom:6px;">
-                  📞 Instant Real Mobile Call (Enter Number &amp; Dial with Approved Tamil Voice)
+              <!-- Instant Real Mobile Call Bar -->
+              <div style="margin-top:10px;padding:12px;border-radius:8px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);">
+                <div style="font-size:12px;font-weight:600;color:#10b981;margin-bottom:8px;">
+                  📞 Instant Real Mobile Call (Enter Number &amp; Dial)
                 </div>
-                <div style="display:flex;gap:8px;align-items:center;">
+                <div style="display:flex;gap:10px;align-items:center;">
                   <input
                     type="tel"
                     id="livePhoneDialInput"
                     class="field-input"
                     value="+918610057080"
                     placeholder="+91 86100 57080"
-                    style="flex:1;padding:7px 10px;font-size:13px;"
+                    style="flex:1;min-width:160px;padding:8px 12px;font-size:14px;font-weight:600;"
                   />
                   <button
                     type="button"
                     class="btn-solid"
                     id="btnDialLivePhoneNow"
-                    style="background:#10b981;border-color:#059669;white-space:nowrap;padding:7px 12px;font-size:13px;"
+                    style="background:#10b981;border-color:#059669;white-space:nowrap;padding:8px 14px;font-size:13px;font-weight:600;"
                   >
                     📲 Call Phone Now
                   </button>
@@ -348,7 +345,7 @@
                     type="button"
                     class="btn-solid"
                     id="btnStartLiveMicCall"
-                    style="background:#2563eb;border-color:#1d4ed8;white-space:nowrap;padding:7px 12px;font-size:13px;"
+                    style="background:#2563eb;border-color:#1d4ed8;white-space:nowrap;padding:8px 14px;font-size:13px;font-weight:600;"
                     title="Talk live with the Tamil AI Agent using your laptop mic (Supports Barge-In / Interruption!)"
                   >
                     🎙️ Live Mic Call
@@ -805,6 +802,6 @@
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=20261109_4"></script>
 </body>
 </html>

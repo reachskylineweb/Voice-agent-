@@ -942,10 +942,15 @@
 
   // -------------------- SMART SPEECH-ONLY BARGE-IN ENGINE (IGNORES NOISE & SPEAKER ECHO) --------------------
   let activeAudioPlayer = null;
+  let activeAudioTimer = null;
   let activeAudioResolve = null;
   let currentSpeechGenId = 0;
 
   function stopActiveAudioImmediately() {
+    if (activeAudioTimer) {
+      clearTimeout(activeAudioTimer);
+      activeAudioTimer = null;
+    }
     if (activeAudioPlayer) {
       try {
         activeAudioPlayer.pause();
@@ -953,6 +958,7 @@
       } catch (_e) {}
       activeAudioPlayer = null;
     }
+    fetch(API_CONFIG.BASE_URL + '/audio/stop', { method: 'POST' }).catch(() => {});
     if (typeof activeAudioResolve === 'function') {
       const fn = activeAudioResolve;
       activeAudioResolve = null;
@@ -963,29 +969,36 @@
   let activeBargeInHandler = null;
 
   /**
-   * Checks if recognized mic words are just acoustic echo from the AI's own speaker output.
+   * Checks if recognized mic words while AI speaker is playing are just acoustic echo from the laptop speaker.
    */
   function isEchoOfAiPrompt(spokenStr, aiPromptText) {
     const cleanSpoken = String(spokenStr || '').trim();
     if (!cleanSpoken) return true;
     const cleanPrompt = String(aiPromptText || '').replace(/[.,?!]/g, '');
-    // Customer interruption words that never appear in the AI's own greeting/questions:
+    // Customer interruption words that immediately prove a real human is speaking:
     const customerTriggers = [
-      'ஹலோ', 'ஆமா', 'ஆமாம்', 'இல்ல', 'இல்லை', 'பேசல', 'கூப்பிடல',
-      'சரி', 'ஓகே', 'வெயிட்', 'நிறுத்து', 'கேக்குதா', 'புரியல', 'கேக்கல',
-      'யாரு', 'யார்', 'எதுக்கு', 'பிஸி', 'வேண்டாம்', 'அப்புறம்',
+      'ஹலோ', 'சொல்லுங்க', 'ஆமா', 'ஆமாம்', 'இல்ல', 'இல்லை', 'பேசல', 'கூப்பிடல',
+      'சரி', 'ஓகே', 'வெயிட்', 'நிறுத்து', 'கேக்குதா', 'கேக்குது', 'புரியல', 'கேக்கல',
+      'யாரு', 'யார்', 'எதுக்கு', 'என்ன', 'விஷயம்', 'பிஸி', 'வேண்டாம்', 'அப்புறம்',
+      'விலை', 'ரேட்', 'ஷோரூம்', 'மைலேஜ்', 'சாப்டியா', 'சாப்பிட்டீங்களா', 'மேடம்', 'ஹாய்',
       'hello', 'yes', 'no', 'wait', 'stop', 'ok', 'aama', 'illa', 'yaaru', 'edhuku', 'busy'
     ];
     for (const kw of customerTriggers) {
-      if (cleanSpoken.toLowerCase().includes(kw)) {
+      if (cleanSpoken.toLowerCase().includes(kw) && !cleanPrompt.toLowerCase().includes(kw)) {
         return false;
       }
     }
-    // If all words in cleanSpoken appear inside the AI's own prompt, it's speaker echo!
     const words = cleanSpoken.split(/\s+/).filter((w) => w.length >= 2);
-    if (words.length === 0) return true;
-    const echoMatches = words.filter((w) => cleanPrompt.includes(w));
-    return echoMatches.length === words.length;
+    // Single isolated word while speaker is blasting (that isn't in customerTriggers above, e.g. "இந்த", "வேற") is speaker echo
+    if (words.length < 2) return true;
+    // Check word or 2-character Tamil stem overlap against AI prompt
+    const nonEchoWords = words.filter((w) => {
+      if (cleanPrompt.includes(w)) return false;
+      const stem = w.slice(0, 3);
+      if (stem.length >= 3 && cleanPrompt.includes(stem)) return false;
+      return true;
+    });
+    return nonEchoWords.length < 2;
   }
 
   /**
@@ -994,84 +1007,42 @@
    */
   async function speakUtterance(text, forceSpeak = false, enableBargeIn = true) {
     const chk = document.getElementById('chkLiveTts');
-    if (!forceSpeak && (!chk || !chk.checked)) {
+    // Always speak when forceSpeak is true OR when a real SIM/Bluetooth call is active!
+    if (window.__usbSimCallActive && chk && !chk.checked) {
+      chk.checked = true;
+    }
+    if (!forceSpeak && !window.__usbSimCallActive && (!chk || !chk.checked)) {
       await new Promise((r) => setTimeout(r, 700));
       return { interrupted: false, customerSpeech: '' };
     }
 
     const myGenId = ++currentSpeechGenId;
     stopActiveAudioImmediately();
-    if (typeof window.__stopGlobalSpeechRec === 'function') window.__stopGlobalSpeechRec();
 
-    let playUrl = null;
-    let isBlobUrl = false;
-
-    // 1. Try /api/tts (or http://localhost:8000/api/tts if frontend is on port 4500)
-    const ttsEndpoints = [API_CONFIG.BASE_URL + '/tts'];
-    if (window.location.port && window.location.port !== '8000') {
-      ttsEndpoints.push('http://localhost:8000/api/tts');
-    }
-    for (const ep of ttsEndpoints) {
-      try {
-        const res = await fetch(ep, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-          body: JSON.stringify({ text }),
-        });
-        if (res.ok && (res.headers.get('content-type') || '').includes('audio')) {
-          const blob = await res.blob();
-          if (blob.size > 200) {
-            playUrl = URL.createObjectURL(blob);
-            isBlobUrl = true;
-            break;
-          }
+    let wavDurationMs = 4500;
+    let okTts = false;
+    try {
+      const res = await fetch(API_CONFIG.BASE_URL + '/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+        body: JSON.stringify({ text, playOnServer: true }),
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        // 24kHz 16-bit mono WAV = 48,000 bytes per second
+        if (blob && blob.size > 44) {
+          wavDurationMs = Math.max(1200, Math.round(((blob.size - 44) / 48000) * 1000) + 150);
         }
-      } catch (_err) {}
-    }
-
-    // 2. Fallback to pre-generated AI4Bharat VITS-Rasa-13 .wav in frontend/audio/
-    if (!playUrl) {
-      const t = String(text || '').trim();
-      if (t.includes('கஸ்டமர் சப்போர்ட்ல இருந்து பேசுறேன்')) {
-        playUrl = t.includes('ஹீலிங்') ? 'audio/nlu_who_heal.wav' : 'audio/nlu_who_tata.wav';
-      } else if (t.includes('கருத்தை கேட்டு நோட் பண்ண')) {
-        playUrl = t.includes('ஹீலிங்') ? 'audio/nlu_why_heal.wav' : 'audio/nlu_why_tata.wav';
-      } else if (t.includes('திரும்பத் தெளிவா சொல்றேன்') || t.includes('திரும்ப தெளிவா சொல்றேன்')) {
-        playUrl = 'audio/nlu_repeat.wav';
-      } else if (t.includes('டிஸ்டர்ப் பண்ணதுக்கு மன்னிக்கவும்') || t.includes('அப்புறமா உங்களுக்கு கால் பண்றேன்')) {
-        playUrl = 'audio/nlu_busy.wav';
-      } else if (t.includes('வெரிபிகேஷன் டீம்ல இருந்து பேசுறேன்')) {
-        playUrl = 'audio/nlu_clarify_tata.wav';
-      } else if (t.includes('பொன்னான நேரத்துக்கு') || t.includes('நல்ல நாளா அமையட்டும்')) {
-        playUrl = 'audio/closing_yes.wav';
-      } else if (t.includes('இன்னைக்கே உங்களுக்கு கால் பண்ண சொல்றேன்') || t.includes('உங்களை கூப்பிட சொல்றேன்')) {
-        playUrl = 'audio/closing_no.wav';
-      } else if (t.includes('வணக்கம்') && (t.includes('டாட்டா') || t.includes('TATA'))) {
-        if (t.includes('நெக்சான்') && t.includes('பேசுனாங்களா')) playUrl = 'audio/test_voice_sample.wav';
-        else if (t.includes('சுரேஷ்')) playUrl = 'audio/tata_greet_suresh.wav';
-        else playUrl = 'audio/tata_greet_ramesh.wav';
-      } else if (t.includes('வணக்கம்') && (t.includes('ஹீலிங்') || t.includes('Healing'))) {
-        playUrl = 'audio/heal_greet_karthik.wav';
-      } else if (t.includes('நெக்சான்') || t.includes('டீலர் உங்ககிட்ட பேசுனாங்களா')) {
-        playUrl = 'audio/tata_q1.wav';
-      } else if (t.includes('வண்டி விவரம்') || t.includes('திருப்தியா இருந்ததா')) {
-        playUrl = 'audio/tata_q2.wav';
-      } else if (t.includes('சர்வீஸ் பத்தி விசாரிச்சிருந்தீங்க') || t.includes('டீம் உங்ககிட்ட பேசுனாங்களா')) {
-        playUrl = 'audio/heal_q1.wav';
-      } else if (t.includes('கன்சல்டேஷன் அப்பாயின்ட்மென்ட்') || t.includes('புக் பண்ணிக்கலாமா')) {
-        playUrl = 'audio/heal_q2.wav';
+        okTts = true;
       }
-    }
-
-    // 3. Fallback to browser speechSynthesis if custom text and backend is offline
-    if (!playUrl && !('speechSynthesis' in window)) return { interrupted: false, customerSpeech: '' };
+    } catch (_err) {}
+    if (!okTts) return { interrupted: false, customerSpeech: '' };
 
     // If another utterance was requested while fetch('/api/tts') was in flight, abort this older audio!
     if (myGenId !== currentSpeechGenId) {
-      if (isBlobUrl) URL.revokeObjectURL(playUrl);
+      stopActiveAudioImmediately();
       return { interrupted: true, customerSpeech: '' };
     }
-    stopActiveAudioImmediately();
 
     let wasInterrupted = false;
     let capturedSpeech = '';
@@ -1092,30 +1063,39 @@
       doneSpeech = true;
       activeBargeInHandler = null;
       if (silenceTimer) clearTimeout(silenceTimer);
-      if (typeof window.__stopGlobalSpeechRec === 'function') window.__stopGlobalSpeechRec();
-      try { if (rec) rec.abort(); } catch (_e) {}
+      try {
+        if (rec) {
+          rec.onend = null;
+          rec.onerror = null;
+          rec.onresult = null;
+          rec.abort();
+        }
+      } catch (_e) {}
       if (speechFinishedResolve) {
-        const resultText = overrideText !== undefined ? overrideText : (finalTranscript || interimTranscript).trim();
+        const resultText = overrideText !== undefined ? overrideText : (finalTranscript + ' ' + interimTranscript).trim();
         speechFinishedResolve(resultText);
       }
     };
 
     const triggerVerifiedSpeechBargeIn = (detectedWords, isManualInstant = false) => {
       const sp = document.getElementById('liveMicHeardSpan');
-      if (sp) sp.textContent = `Hearing: "${detectedWords}"`;
+      if (sp) sp.textContent = `🎙️ Hearing: "${detectedWords}" (Listening completely...)`;
       if (!wasInterrupted) {
         wasInterrupted = true;
         stopActiveAudioImmediately();
+        // Reset transcript to only what customer is saying now (discarding earlier speaker echo)
         const msgEl = document.getElementById('clientLiveCallMessage');
         if (msgEl) {
-          msgEl.innerHTML += `<div style="color:#f59e0b;font-weight:600;margin-top:4px;">⏸️ Customer Interrupted ("${escapeHtml(detectedWords)}") — AI Stopped &amp; Listening...</div>`;
+          msgEl.innerHTML += `<div style="color:#f59e0b;font-weight:600;margin-top:4px;">⏸️ Customer Interrupted ("${escapeHtml(detectedWords)}") — AI Stopped &amp; Listening Completely...</div>`;
         }
       }
       if (silenceTimer) clearTimeout(silenceTimer);
       if (isManualInstant) {
         finishCustomerTurn(detectedWords);
       } else {
-        silenceTimer = setTimeout(() => finishCustomerTurn(), finalTranscript.trim() ? 450 : 750);
+        // Wait 1.25s after final word (or 1.65s after interim word) so the customer can finish their FULL sentence!
+        const waitPauseMs = (finalTranscript.trim() && !interimTranscript.trim()) ? 1250 : 1650;
+        silenceTimer = setTimeout(() => finishCustomerTurn(), waitPauseMs);
       }
     };
 
@@ -1127,7 +1107,6 @@
       if (SpeechRec) {
         try {
           rec = new SpeechRec();
-          if (typeof window.__setGlobalSpeechRec === 'function') window.__setGlobalSpeechRec(rec);
           rec.lang = 'ta-IN';
           rec.continuous = true;
           rec.interimResults = true;
@@ -1141,14 +1120,20 @@
               else interimTranscript += t;
             }
             const combined = (finalTranscript + ' ' + interimTranscript).trim();
-            if (combined.length >= 2 && !isEchoOfAiPrompt(combined, text)) {
+            if (wasInterrupted) {
+              // Already interrupted AI -> keep extending silenceTimer on every word until user finishes full sentence!
+              triggerVerifiedSpeechBargeIn(combined, false);
+            } else if (combined.length >= 2 && !isEchoOfAiPrompt(combined, text)) {
               triggerVerifiedSpeechBargeIn(combined, false);
             }
           };
           rec.onerror = () => {};
           rec.onend = () => {
-            if (wasInterrupted && !doneSpeech && (finalTranscript || interimTranscript).trim().length > 0) {
-              finishCustomerTurn();
+            // If user interrupted and silenceTimer hasn't finished yet, keep mic open in case user paused briefly mid-sentence!
+            if (wasInterrupted && !doneSpeech) {
+              try { rec.start(); } catch (_e) {
+                finishCustomerTurn();
+              }
             }
           };
           rec.start();
@@ -1156,74 +1141,29 @@
       }
     }
 
-    if (playUrl) {
-      await new Promise((resolveAudio) => {
-        const audio = new Audio(playUrl);
-        activeAudioPlayer = audio;
-        activeAudioResolve = (resObj) => {
-          if (isBlobUrl) URL.revokeObjectURL(playUrl);
-          resolveAudio(resObj);
-        };
-        audio.onended = () => {
-          activeAudioPlayer = null;
-          if (activeAudioResolve) {
-            const fn = activeAudioResolve;
-            activeAudioResolve = null;
-            fn({ interrupted: false });
-          }
-        };
-        audio.onerror = () => {
-          activeAudioPlayer = null;
-          if (activeAudioResolve) {
-            const fn = activeAudioResolve;
-            activeAudioResolve = null;
-            fn({ interrupted: false });
-          }
-        };
-        audio.play().catch(() => {
-          if (activeAudioResolve) {
-            const fn = activeAudioResolve;
-            activeAudioResolve = null;
-            fn({ interrupted: false });
-          }
-        });
-      });
-    } else if ('speechSynthesis' in window) {
-      await new Promise((resolveTts) => {
-        try {
-          window.speechSynthesis.cancel();
-          const utter = new SpeechSynthesisUtterance(text);
-          utter.lang = 'ta-IN';
-          utter.rate = 0.95;
-          activeAudioResolve = (resObj) => {
-            try { window.speechSynthesis.cancel(); } catch (_e) {}
-            resolveTts(resObj);
-          };
-          utter.onend = () => {
-            if (activeAudioResolve) {
-              const fn = activeAudioResolve;
-              activeAudioResolve = null;
-              fn({ interrupted: false });
-            }
-          };
-          utter.onerror = () => {
-            if (activeAudioResolve) {
-              const fn = activeAudioResolve;
-              activeAudioResolve = null;
-              fn({ interrupted: false });
-            }
-          };
-          window.speechSynthesis.speak(utter);
-        } catch (_e) {
-          resolveTts({ interrupted: false });
+    await new Promise((resolveAudio) => {
+      activeAudioResolve = (resObj) => {
+        if (activeAudioTimer) {
+          clearTimeout(activeAudioTimer);
+          activeAudioTimer = null;
         }
-      });
-    }
+        resolveAudio(resObj);
+      };
+      activeAudioTimer = setTimeout(() => {
+        activeAudioTimer = null;
+        if (activeAudioResolve) {
+          const fn = activeAudioResolve;
+          activeAudioResolve = null;
+          fn({ interrupted: false });
+        }
+      }, wavDurationMs);
+    });
 
     if (wasInterrupted) {
       capturedSpeech = await speechFinishedPromise;
     } else {
-      finishCustomerTurn();
+      // Close the speaker-playback mic session immediately so room reverb from the end of AI speech isn't mistaken for user speech
+      finishCustomerTurn('');
     }
 
     return { interrupted: wasInterrupted, customerSpeech: capturedSpeech };
@@ -1287,22 +1227,14 @@
 
       const renderInteractivePanel = () => {
         if (!liveMsg) return;
-        const quickPills = `
+        const micBar = `
           <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.14);">
-            <div style="font-size:11px;color:#9ca3af;margin-bottom:5px;">
-              🎙️ <strong>Speak in Tamil into Mic</strong> (or click any customer reply below):
-              <span id="liveMicHeardSpan" style="color:#fbbf24;font-weight:600;margin-left:6px;">${liveHeardText ? 'Hearing: "' + escapeHtml(liveHeardText) + '"' : ''}</span>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:5px;">
-              <button type="button" onclick="window.__sendLiveCustomerUtterance('நீ யாரு எங்க இருந்து பேசுறீங்க?')" style="background:#374151;color:#fff;border:1px solid #4b5563;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">❓ "நீ யாரு?"</button>
-              <button type="button" onclick="window.__sendLiveCustomerUtterance('எதுக்கு கால் பண்ணீங்க?')" style="background:#374151;color:#fff;border:1px solid #4b5563;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">❓ "எதுக்கு கால் பண்ணீங்க?"</button>
-              <button type="button" onclick="window.__sendLiveCustomerUtterance('புரியல இன்னொரு வாட்டி சொல்லுங்க')" style="background:#374151;color:#fff;border:1px solid #4b5563;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">🔁 "புரியல திரும்ப சொல்லுங்க"</button>
-              <button type="button" onclick="window.__sendLiveCustomerUtterance('ஆமா சார் பேசுனாங்க திருப்தியா இருந்தது')" style="background:#065f46;color:#fff;border:1px solid #10b981;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">✅ "ஆமா பேசுனாங்க"</button>
-              <button type="button" onclick="window.__sendLiveCustomerUtterance('இல்ல இன்னும் யாரும் கூப்பிடல')" style="background:#7f1d1d;color:#fff;border:1px solid #ef4444;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">❌ "இல்ல கூப்பிடல"</button>
-              <button type="button" onclick="window.__sendLiveCustomerUtterance('இப்போ பிஸியா இருக்கேன் அப்புறம் கூப்பிடுங்க')" style="background:#78350f;color:#fff;border:1px solid #f59e0b;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">⏳ "பிஸியா இருக்கேன்"</button>
+            <div style="font-size:12px;color:#e5e7eb;">
+              🎙️ <strong>Live Voice Status:</strong>
+              <span id="liveMicHeardSpan" style="color:#fbbf24;font-weight:600;margin-left:6px;">${liveHeardText ? escapeHtml(liveHeardText) : 'Ready'}</span>
             </div>
           </div>`;
-        liveMsg.innerHTML = callLogs.map((l) => `<div style="margin-bottom:4px;">${l}</div>`).join('') + quickPills;
+        liveMsg.innerHTML = callLogs.map((l) => `<div style="margin-bottom:4px;">${l}</div>`).join('') + micBar;
       };
 
       const addCallLog = (htmlLine) => {
@@ -1310,29 +1242,100 @@
         renderInteractivePanel();
       };
 
-      addCallLog(`Dialing <strong>${escapeHtml(lead.name)} (${escapeHtml(lead.phone)})</strong> — 🔊 Greeting: "${escapeHtml(greeting)}"`);
-      const greetRes = await speakUtterance(greeting, false, true);
+      // Check if Phone (Bluetooth HFP / USB) is connected to dial real SIM calls!
+      let usbConnected = false;
+      let usbModel = '';
+      let usbCallRejected = false;
+      try {
+        const adbStRes = await fetch(`${API_CONFIG.BASE_URL}/adb/status`);
+        if (adbStRes.ok) {
+          const adbSt = await adbStRes.json();
+          usbConnected = Boolean(adbSt.connected);
+          usbModel = adbSt.model || adbSt.deviceId || 'Samsung Phone';
+        }
+      } catch (_e) {}
 
-      if (lead.simMode === 'not_attended') {
+      window.__usbSimCallActive = usbConnected;
+      if (usbConnected) {
+        addCallLog(`📱 <strong>[${escapeHtml(usbModel)}]</strong> Dialing (${i + 1}/${pendingLeads.length}): <strong>${escapeHtml(lead.name)} (${escapeHtml(lead.phone)})</strong>...`);
+        try {
+          const dRes = await fetch(`${API_CONFIG.BASE_URL}/adb/dial`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: lead.phone }),
+          });
+          if (dRes.ok) {
+            addCallLog(`🔔 <strong style="color:#f59e0b;">Ringing ${escapeHtml(lead.phone)}...</strong> Waiting for call to be attended...`);
+            // Poll every 350ms so the EXACT instant the call is attended (ACTIVE), we show "Call Attended!" and speak immediately!
+            let sawDialing = false;
+            let callAnswered = false;
+            for (let w = 0; w < 110; w++) {
+              if (state.stopAfterCurrentCall) break;
+              await new Promise((r) => setTimeout(r, 350));
+              const csRes = await fetch(`${API_CONFIG.BASE_URL}/adb/call-state`);
+              if (csRes.ok) {
+                const cs = await csRes.json();
+                if (cs.callState === 'ACTIVE') {
+                  callAnswered = true;
+                  if (liveBadge) liveBadge.textContent = `✅ Call Attended: ${lead.name} (${lead.phone})`;
+                  addCallLog(`✅ <strong style="color:#10b981;">Call Attended (${escapeHtml(lead.phone)})!</strong> AI is speaking now...`);
+                  break;
+                } else if (cs.callState === 'DIALING' || cs.callState === 'OFFHOOK' || cs.callState === 'RINGING') {
+                  sawDialing = true;
+                } else if (sawDialing && w >= 6 && cs.callState === 'IDLE') {
+                  usbCallRejected = true;
+                  break;
+                }
+              }
+            }
+            if (!callAnswered && !state.stopAfterCurrentCall) {
+              usbCallRejected = true;
+            }
+          }
+        } catch (_e) {}
+      }
+
+      if (usbCallRejected || (!usbConnected && lead.simMode === 'not_attended')) {
         lead.status = 'NOT_ATTENDED';
         lead.answers = {};
         (client.questions || []).forEach((q) => {
           lead.answers[q.id] = '—';
         });
-        lead.callSummary = 'Call Not Attended — Customer did not pick up / phone ringing no answer.';
+        lead.callSummary = usbCallRejected
+          ? 'USB Phone Call Not Attended / Rejected by Customer.'
+          : 'Call Not Attended — Customer did not pick up / phone ringing no answer.';
         lead.calledAt = formatNow();
+        addCallLog(`📵 <strong>Call Not Attended (${escapeHtml(lead.phone)})</strong> — Moving to next number...`);
       } else {
+        addCallLog(`🔊 <strong>Speaking Greeting to ${escapeHtml(lead.name)} (${escapeHtml(lead.phone)}):</strong> "${escapeHtml(greeting)}"`);
+        const greetRes = await speakUtterance(greeting, true, true);
         let earlyBusyExit = false;
 
-        // If customer interrupted during greeting (e.g. asked "நீ யாரு?"), answer them first!
-        if (greetRes?.interrupted && greetRes.customerSpeech) {
-          let gIntent = window.__classifyTamilIntent ? window.__classifyTamilIntent(greetRes.customerSpeech, client.name) : { intent: 'QUESTION_WHO', action: 'REPEAT_CURRENT', spokenReply: `வணக்கம் சார், நான் ${client.name} கஸ்டமர் சப்போர்ட்ல இருந்து பேசுறேன்.` };
+        // Wait 3.0s after greeting (listening on mic) so the first sentence pauses naturally and catches any greeting reply completely!
+        let greetCustomerSpeech = greetRes?.interrupted ? (greetRes.customerSpeech || '') : '';
+        if (!greetCustomerSpeech && typeof window.__listenForCustomerReplyClean === 'function') {
+          liveHeardText = 'Listening after Greeting...';
+          renderInteractivePanel();
+          greetCustomerSpeech = await window.__listenForCustomerReplyClean((heard) => {
+            liveHeardText = heard;
+            const sp = document.getElementById('liveMicHeardSpan');
+            if (sp) sp.textContent = `🎙️ Hearing: "${heard}" (Listening completely...)`;
+          }, 3000);
+          liveHeardText = '';
+          renderInteractivePanel();
+        }
+
+        // If customer interrupted or spoke right after greeting (e.g. asked "நீ யாரு?", "சாப்டியா?"), think with Groq LLM & answer them first!
+        let greetTurns = 0;
+        while (greetCustomerSpeech && !earlyBusyExit && greetTurns < 3) {
+          greetTurns++;
+          let gIntent = window.__classifyTamilIntent ? window.__classifyTamilIntent(greetCustomerSpeech, client.name) : { intent: 'QUESTION_WHO', action: 'REPEAT_CURRENT', spokenReply: `வணக்கம் சார், நான் ${client.name} கஸ்டமர் சப்போர்ட்ல இருந்து பேசுறேன்.` };
           try {
             const gRes = await fetch(`${API_CONFIG.BASE_URL}/llm/classify`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                replyText: greetRes.customerSpeech,
+                replyText: greetCustomerSpeech,
                 clientName: client.name,
                 questionText: greeting,
                 positiveKeywords: client.trainer?.positiveKeywords || '',
@@ -1341,19 +1344,25 @@
             });
             if (gRes.ok) gIntent = await gRes.json();
           } catch (_e) {}
-          addCallLog(`🗣️ <strong>Customer Interrupted Greeting:</strong> "${escapeHtml(greetRes.customerSpeech)}" ➡️ <strong>${escapeHtml(gIntent.intent)}</strong>`);
+          addCallLog(`🗣️ <strong>Customer Spoke on Greeting:</strong> "${escapeHtml(greetCustomerSpeech)}" ➡️ <strong>${escapeHtml(gIntent.intent)}</strong>`);
           if (gIntent.action === 'END_CALL_BUSY') {
             earlyBusyExit = true;
             lead.status = 'NOT_ATTENDED';
-            lead.callSummary = `Customer busy during greeting: "${greetRes.customerSpeech}"`;
+            lead.callSummary = `Customer busy during greeting: "${greetCustomerSpeech}"`;
             lead.calledAt = formatNow();
             if (gIntent.spokenReply) {
               addCallLog(`🔊 <strong>AI:</strong> "${escapeHtml(gIntent.spokenReply)}"`);
-              await speakUtterance(gIntent.spokenReply, false, false);
+              await speakUtterance(gIntent.spokenReply, true, false);
             }
-          } else if (gIntent.spokenReply) {
-            addCallLog(`🔊 <strong>AI (Answering Customer):</strong> "${escapeHtml(gIntent.spokenReply)}"`);
-            await speakUtterance(gIntent.spokenReply, false, true);
+            break;
+          }
+          if (gIntent.spokenReply) {
+            addCallLog(`🔊 <strong>AI (Groq LLM Reply):</strong> "${escapeHtml(gIntent.spokenReply)}"`);
+            const followUpRes = await speakUtterance(gIntent.spokenReply, true, true);
+            greetCustomerSpeech = followUpRes?.interrupted ? (followUpRes.customerSpeech || '') : '';
+            await new Promise((r) => setTimeout(r, 450));
+          } else {
+            greetCustomerSpeech = '';
           }
         }
 
@@ -1366,31 +1375,37 @@
             const q = questions[qIdx];
             let answeredThisQ = false;
             let attempts = 0;
+            let questionTurns = 0;
 
-            while (!answeredThisQ && attempts < 3) {
+            while (!answeredThisQ && attempts < 3 && questionTurns < 6) {
               attempts++;
+              questionTurns++;
               addCallLog(`🔊 <strong>Asking Q${qIdx + 1}:</strong> "${escapeHtml(q.text)}"`);
-              const qRes = await speakUtterance(q.text, false, true);
+              const qRes = await speakUtterance(q.text, true, true);
 
               let customerSpeech = '';
               if (qRes?.interrupted && qRes.customerSpeech) {
                 customerSpeech = qRes.customerSpeech;
               } else if (typeof window.__listenForCustomerReplyClean === 'function') {
-                liveHeardText = 'Listening on Mic...';
+                liveHeardText = 'Listening on Mic (Speak your full sentence)...';
                 renderInteractivePanel();
                 customerSpeech = await window.__listenForCustomerReplyClean((heard) => {
                   liveHeardText = heard;
                   const sp = document.getElementById('liveMicHeardSpan');
-                  if (sp) sp.textContent = `Hearing: "${heard}"`;
-                }, 4500);
+                  if (sp) sp.textContent = `🎙️ Hearing: "${heard}" (Listening completely...)`;
+                }, 10000);
                 liveHeardText = '';
               }
 
-              // If user didn't speak into mic within 8.5s, fall back to lead's simMode so batch campaigns don't get stuck forever
+              const isLiveTtsOn = document.getElementById('chkLiveTts')?.checked !== false || usbConnected;
               if (!customerSpeech) {
+                if (isLiveTtsOn && attempts < 3) {
+                  addCallLog(`⚠️ <em>No mic speech heard in 10s — repeating Q${qIdx + 1}...</em>`);
+                  continue;
+                }
                 const defaultAns = lead.simMode !== 'not_qualified' ? 'ஆமா சார் பேசுனாங்க' : 'இல்ல இன்னும் கூப்பிடல';
                 customerSpeech = defaultAns;
-                addCallLog(`ℹ️ <em>(No mic speech detected in 8.5s — using lead simulation: "${escapeHtml(customerSpeech)}")</em>`);
+                addCallLog(`ℹ️ <em>(No mic speech detected — using lead simulation: "${escapeHtml(customerSpeech)}")</em>`);
               }
 
               let nlu = window.__classifyTamilIntent
@@ -1422,17 +1437,26 @@
                 lead.status = 'NOT_ATTENDED';
                 lead.callSummary = nlu.summary || `Customer busy: "${customerSpeech}"`;
                 addCallLog(`🔊 <strong>AI (Closing - Busy):</strong> "${escapeHtml(nlu.spokenReply)}"`);
-                await speakUtterance(nlu.spokenReply, false, false);
+                await speakUtterance(nlu.spokenReply, true, false);
                 break;
               }
 
               if (nlu.action === 'REPEAT_CURRENT') {
-                // Customer asked "நீ யாரு?", "எதுக்கு கால் பண்ணீங்க?", or "புரியல திரும்ப சொல்லுங்க"!
+                // Customer asked a question or made a comment -> Speak Groq LLM's smart Tamil answer and then re-ask current question!
+                if (attempts > 0) attempts--; // Don't penalize customer for asking questions!
                 if (nlu.spokenReply) {
-                  addCallLog(`🔊 <strong>AI (Answering Customer):</strong> "${escapeHtml(nlu.spokenReply)}"`);
-                  await speakUtterance(nlu.spokenReply, false, true);
+                  addCallLog(`🔊 <strong>AI (Groq LLM Reply):</strong> "${escapeHtml(nlu.spokenReply)}"`);
+                  await speakUtterance(nlu.spokenReply, true, true);
+                  await new Promise((r) => setTimeout(r, 450));
                 }
                 continue;
+              }
+
+              // Even when moving to NEXT_QUESTION, if Groq LLM generated a spokenReply to a customer comment, speak it first!
+              if (nlu.spokenReply) {
+                addCallLog(`🔊 <strong>AI (Groq LLM Reply):</strong> "${escapeHtml(nlu.spokenReply)}"`);
+                await speakUtterance(nlu.spokenReply, true, true);
+                await new Promise((r) => setTimeout(r, 350));
               }
 
               const ansLabel = nlu.answer === 'NO' ? 'NO' : 'YES';
@@ -1445,7 +1469,7 @@
                 lead.callSummary = `Customer responded NO ("${customerSpeech}") regarding ${lead.enquiry}. Marked as Not Qualified.`;
                 const closeNo = 'சரிங்க சார், நான் இப்பவே நம்ம டீலர்கிட்ட சொல்லி, இன்னைக்கே உங்களுக்கு கால் பண்ண சொல்றேன். ரொம்ப நன்றி சார்!';
                 addCallLog(`🔊 <strong>AI (Closing):</strong> "${escapeHtml(closeNo)}"`);
-                await speakUtterance(closeNo, false, false);
+                await speakUtterance(closeNo, true, false);
                 break;
               }
             }
@@ -1460,17 +1484,25 @@
               lead.callSummary = `Customer answered YES to all ${client.questions.length} questions regarding ${lead.enquiry}.`;
               const closeYes = 'ரொம்ப நன்றி சார், உங்க பொன்னான நேரத்துக்கு மிக்க நன்றி, வணக்கம்!';
               addCallLog(`🔊 <strong>AI (Closing):</strong> "${escapeHtml(closeYes)}"`);
-              await speakUtterance(closeYes, false, false);
+              await speakUtterance(closeYes, true, false);
             } else {
               lead.status = 'NOT_QUALIFIED';
               lead.callSummary = `Customer responded NO / Needs follow-up regarding ${lead.enquiry}.`;
               const closeNo = 'சரிங்க சார், நான் இப்பவே நம்ம டீலர்கிட்ட சொல்லி, இன்னைக்கே உங்களுக்கு கால் பண்ண சொல்றேன். ரொம்ப நன்றி சார்!';
               addCallLog(`🔊 <strong>AI (Closing):</strong> "${escapeHtml(closeNo)}"`);
-              await speakUtterance(closeNo, false, false);
+              await speakUtterance(closeNo, true, false);
             }
           }
           lead.calledAt = formatNow();
         }
+      }
+
+      // If calling via USB Android Phone, automatically hang up current call before dialing next number in the 70-80 list!
+      if (usbConnected) {
+        try {
+          await fetch(`${API_CONFIG.BASE_URL}/adb/hangup`, { method: 'POST' });
+          addCallLog(`📴 <em>USB Phone Call Ended (${escapeHtml(lead.phone)}) — Preparing next number in 3s...</em>`);
+        } catch (_e) {}
       }
 
       await tryApiCall(API_CONFIG.ENDPOINTS.CALL_RESULT(client.id, lead.id), {
@@ -1490,6 +1522,10 @@
         showToast('Voice agent stopped after finishing the current call.');
         break;
       }
+
+      if (usbConnected && i < pendingLeads.length - 1) {
+        await new Promise((r) => setTimeout(r, 3000));
+      }
     }
 
     if (!state.stopAfterCurrentCall) {
@@ -1497,6 +1533,7 @@
       showToast(`Completed outbound calls for ${client.name}!`);
     }
 
+    window.__usbSimCallActive = false;
     state.isCallingActive = false;
     state.stopAfterCurrentCall = false;
     state.currentlyCallingLeadId = null;
@@ -2244,17 +2281,60 @@
       await speakUtterance(greet.replace(/\{lead_name\}/g, 'ரமேஷ்'), true);
     });
 
-    document.getElementById('btnDialLivePhoneNow')?.addEventListener('click', async () => {
-      const phoneEl = document.getElementById('livePhoneDialInput');
-      const toPhone = (phoneEl?.value || '+918610057080').trim();
-      const client = getClientById(state.selectedOutboundClientId) || state.clients[0];
-      if (!client) return;
-      const lead = client.leads[0] || { id: 'LEAD-LIVE-1', name: 'ரமேஷ்', phone: toPhone };
+    document.getElementById('btnSyncBluetoothCalls')?.addEventListener('click', async () => {
       const msgEl = document.getElementById('clientLiveCallMessage');
       const badgeEl = document.getElementById('clientLiveStateBadge');
-      if (badgeEl) badgeEl.textContent = 'Dialing Live Mobile...';
-      if (msgEl) msgEl.innerHTML = `📞 Dialing <strong>${escapeHtml(toPhone)}</strong> via Twilio with Approved Tamil Voice (VITS-Rasa-13)...`;
-      showToast(`📞 Calling ${toPhone} now! Pick up your phone and press 1 after trial prompt.`);
+      if (badgeEl) badgeEl.textContent = 'Connecting Bluetooth...';
+      if (msgEl) msgEl.innerHTML = `🔵 <strong>Connecting Laptop (Z14-55N) ↔ Samsung Galaxy M34 5G Directly via Bluetooth (No Link to Phone needed)...</strong>`;
+      try {
+        const res = await fetch(`${API_CONFIG.BASE_URL}/bt/sync`, { method: 'POST' });
+        const data = await res.json();
+        if (data.hfpCallsConnected) {
+          if (badgeEl) badgeEl.textContent = 'Direct Bluetooth Ready ✅';
+          if (msgEl) {
+            msgEl.innerHTML =
+              `✅ <strong style="color:#10b981;">Direct Bluetooth (Calls + Audio) லேப்டாப் (Z14-55N) ↔ Samsung Galaxy M34 5G கூட நேரடியா கனெக்ட் ஆகிடுச்சு! (Link to Phone தேவையில்லை)</strong><br>` +
+              `<span style="font-size:12px;color:#a7f3d0;">இப்போ நீங்க <strong>📲 Call Phone Now</strong> அல்லது <strong>▶ Start Calling</strong> தாராளமா அழுத்தலாம்!</span>`;
+          }
+          showToast('✅ Direct Bluetooth Calls + Audio Connected!');
+          return;
+        }
+
+        if (badgeEl) badgeEl.textContent = 'Check Phone Bluetooth';
+        if (msgEl) {
+          msgEl.innerHTML =
+            `⚠️ <strong style="color:#fbbf24;">உங்க Samsung போன்ல Bluetooth ON-ல இருக்கான்னு மட்டும் பாருங்க!</strong><br>` +
+            `<span style="font-size:12px;color:#cbd5e1;">போன்ல Bluetooth ON பண்ணிட்டு திரும்ப <strong>🔵 Connect Bluetooth</strong> கிளிக் பண்ணுங்க (Link to Phone ஆப் தேவையே இல்லை!).</span>`;
+        }
+        showToast('⚠️ Please turn ON Bluetooth on your Samsung phone');
+      } catch (err) {
+        if (msgEl) msgEl.innerHTML = `❌ Bluetooth Sync Error: ${escapeHtml(err.message)}`;
+      }
+    });
+
+    document.getElementById('btnDialLivePhoneNow')?.addEventListener('click', async () => {
+      const phoneEl = document.getElementById('livePhoneDialInput');
+      const rawInput = (phoneEl?.value || '').trim();
+      const digits = rawInput.replace(/\D/g, '');
+      const msgEl = document.getElementById('clientLiveCallMessage');
+      const badgeEl = document.getElementById('clientLiveStateBadge');
+
+      if (digits.length < 10) {
+        if (msgEl) msgEl.innerHTML = `⚠️ <strong style="color:#ef4444;">தயவுசெய்து 10 இலக்க மொபைல் நம்பரை டைப் பண்ணுங்க (உதாரணம்: 8610057080)!</strong>`;
+        showToast('⚠️ Please enter a 10-digit mobile number!');
+        return;
+      }
+
+      const toPhone = `+91${digits.slice(-10)}`;
+      const client = getClientById(state.selectedOutboundClientId) || state.clients[0];
+      if (!client) return;
+
+      const lead = (client.leads && client.leads[0]) || { id: 'LEAD-TATA-1', name: 'ரமேஷ்', phone: toPhone, enquiry: 'Enquiry' };
+      lead.phone = toPhone;
+
+      if (badgeEl) badgeEl.textContent = '📞 Dialing via Twilio Cloud...';
+      if (msgEl) msgEl.innerHTML = `☁️ <strong>Dialing ${escapeHtml(toPhone)} via Twilio Cloud Telephony (100% Digital Audio, No Laptop Speaker)...</strong>`;
+
       try {
         const res = await fetch(`${API_CONFIG.BASE_URL}/twilio/call`, {
           method: 'POST',
@@ -2267,41 +2347,42 @@
         });
         const data = await res.json();
         if (!res.ok || !data.ok) {
-          const errMsg = data.error || 'Make sure start_server.bat is running on http://localhost:8000';
-          if (msgEl) msgEl.innerHTML = `❌ Call Error: ${escapeHtml(errMsg)}`;
-          showToast(`❌ ${errMsg}`);
+          if (badgeEl) badgeEl.textContent = 'Twilio Dial Error';
+          if (msgEl) msgEl.innerHTML = `❌ <strong style="color:#ef4444;">Twilio Error:</strong> ${escapeHtml(data.error || 'Failed to initiate call')}`;
+          showToast('❌ Twilio Call Failed');
           return;
         }
+
         const callSid = data.callSid;
-        if (msgEl) {
-          msgEl.innerHTML = `✅ Ringing <strong>${escapeHtml(toPhone)}</strong> (Call SID: <code>${escapeHtml(callSid)}</code>)...<br/>👉 <em>Pick up phone, press <strong>1</strong> after trial intro, and speak in Tamil!</em>`;
-        }
-        // Poll live call progress
+        if (badgeEl) badgeEl.textContent = `🔔 Ringing ${toPhone}...`;
+        showToast(`📞 Calling ${toPhone} via Twilio Cloud!`);
+
         const pollTimer = setInterval(async () => {
           try {
             const stRes = await fetch(`${API_CONFIG.BASE_URL}/twilio/call-status/${callSid}`);
             if (!stRes.ok) return;
             const stData = await stRes.json();
-            if (stData.ok && Array.isArray(stData.logs)) {
-              if (msgEl) msgEl.innerHTML = stData.logs.map((l) => `<div>${escapeHtml(l)}</div>`).join('');
-              if (stData.done) {
-                clearInterval(pollTimer);
-                if (badgeEl) badgeEl.textContent = stData.finalStatus;
-                lead.status = stData.finalStatus;
-                lead.answers = stData.answers || lead.answers;
-                lead.calledAt = formatNow();
-                saveState();
-                renderAll();
-                showToast(`🎉 Live Phone Call Completed: ${stData.finalStatus}`);
-              }
+            if (!stData.ok) return;
+
+            if (Array.isArray(stData.logs) && msgEl) {
+              msgEl.innerHTML = stData.logs.map((l) => `<div style="margin-bottom:4px;">${escapeHtml(l)}</div>`).join('');
+            }
+            if (stData.status && badgeEl) {
+              badgeEl.textContent = stData.done ? `✅ ${stData.finalStatus}` : `🎙️ ${stData.status} (${toPhone})`;
+            }
+            if (stData.done) {
+              clearInterval(pollTimer);
+              lead.status = stData.finalStatus || 'QUALIFIED';
+              lead.answers = stData.answers || {};
+              lead.calledAt = formatNow();
+              saveState();
+              renderAll();
+              showToast(`🎉 Call Completed: ${lead.status}`);
             }
           } catch (_e) {}
-        }, 2000);
-      } catch (_err) {
-        if (msgEl) {
-          msgEl.innerHTML = `⚠️ Please open <strong>http://localhost:8000</strong> (run <code>start_server.bat</code>) to place real Twilio mobile calls!`;
-        }
-        showToast('⚠️ Run start_server.bat and open http://localhost:8000 for live mobile calls!');
+        }, 1000);
+      } catch (err) {
+        if (msgEl) msgEl.innerHTML = `⚠️ Error connecting to http://localhost:8000: ${escapeHtml(err.message)}`;
       }
     });
     // ==================== LIVE 2-WAY INTERACTIVE MIC CALL (WITH SMART TAMIL NLU & BARGE-IN) ====================
@@ -2392,41 +2473,13 @@
       };
     }
 
-    let globalSpeechRecInstance = null;
-    window.__setGlobalSpeechRec = function (r) {
-      globalSpeechRecInstance = r;
-    };
-    window.__stopGlobalSpeechRec = function () {
-      if (globalSpeechRecInstance) {
-        try {
-          globalSpeechRecInstance.onresult = null;
-          globalSpeechRecInstance.onend = null;
-          globalSpeechRecInstance.onerror = null;
-          globalSpeechRecInstance.abort();
-        } catch (_e) {}
-        globalSpeechRecInstance = null;
-      }
-    };
-
-    async function ensureMicrophoneAccess() {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Release stream tracks immediately so SpeechRecognition has exclusive access to mic
-        stream.getTracks().forEach((t) => t.stop());
-        return true;
-      } catch (_err) {
-        showToast('⚠️ Microphone permission denied or no mic connected. Please allow mic access in browser.');
-        return false;
-      }
-    }
-
     window.__listenForCustomerReplyClean = listenForCustomerReplyClean;
-    function listenForCustomerReplyClean(onLiveInterimUpdate, timeoutMs = 9000) {
+    function listenForCustomerReplyClean(onLiveInterimUpdate, timeoutMs = 10000) {
       return new Promise((resolve) => {
         let finished = false;
         let rec = null;
         let silenceTimer = null;
+        let maxTimer = null;
         let finalStr = '';
         if (pendingManualUtterance) {
           const p = pendingManualUtterance;
@@ -2441,30 +2494,34 @@
           finished = true;
           manualCustomerOverrideResolver = null;
           if (silenceTimer) clearTimeout(silenceTimer);
-          window.__stopGlobalSpeechRec();
-          try { if (rec) rec.abort(); } catch (_e) {}
+          if (maxTimer) clearTimeout(maxTimer);
+          try {
+            if (rec) {
+              rec.onend = null;
+              rec.onerror = null;
+              rec.onresult = null;
+              rec.abort();
+            }
+          } catch (_e) {}
           resolve(String(val || '').trim());
         };
 
         manualCustomerOverrideResolver = (manualText) => {
-          clearTimeout(maxTimer);
           done(manualText);
         };
 
-        const maxTimer = setTimeout(() => {
-          done(finalStr || interimStr);
+        maxTimer = setTimeout(() => {
+          done((finalStr + ' ' + interimStr).trim());
         }, timeoutMs);
 
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRec) return;
 
-        window.__stopGlobalSpeechRec();
-
-        const startRecognitionInstance = () => {
+        // Wait 200ms after speaker audio ends so previous SpeechRecognition abort() releases mic cleanly
+        setTimeout(() => {
           if (finished) return;
           try {
             rec = new SpeechRec();
-            window.__setGlobalSpeechRec(rec);
             rec.lang = 'ta-IN';
             rec.continuous = true;
             rec.interimResults = true;
@@ -2482,50 +2539,46 @@
                 onLiveInterimUpdate(currentHeard);
               }
               if (currentHeard.length > 0) {
+                // Once customer starts speaking, NEVER let maxTimer cut them off! Extend maxTimer by 12s from latest word.
+                if (maxTimer) clearTimeout(maxTimer);
+                maxTimer = setTimeout(() => {
+                  done((finalStr + ' ' + interimStr).trim());
+                }, 12000);
+
+                // Wait 1.25s after final word (or 1.65s after interim word) so customer can finish their FULL sentence!
                 if (silenceTimer) clearTimeout(silenceTimer);
+                const pauseMs = (finalStr.trim() && !interimStr.trim()) ? 1250 : 1650;
                 silenceTimer = setTimeout(() => {
-                  clearTimeout(maxTimer);
-                  done(currentHeard);
-                }, finalStr.trim() ? 450 : 750);
+                  done((finalStr + ' ' + interimStr).trim());
+                }, pauseMs);
               }
             };
-
-            rec.onerror = (errEv) => {
-              if (errEv && (errEv.error === 'not-allowed' || errEv.error === 'service-not-allowed')) {
-                if (typeof onLiveInterimUpdate === 'function') {
-                  onLiveInterimUpdate('⚠️ Mic blocked in browser — click lock icon in address bar to Allow Microphone');
-                }
-              }
-            };
-
-            rec.onend = () => {
-              if (finished) return;
-              if ((finalStr || interimStr).trim().length > 0) {
-                clearTimeout(maxTimer);
-                done(finalStr || interimStr);
-              } else {
-                // Auto-restart recognition if Chrome ended early on silence while listening window is still active!
+            rec.onerror = () => {
+              if (!finished) {
                 setTimeout(() => {
-                  if (!finished) startRecognitionInstance();
-                }, 150);
+                  if (!finished) {
+                    try { rec.start(); } catch (_e) {}
+                  }
+                }, 140);
               }
             };
-
+            rec.onend = () => {
+              // If customer paused briefly mid-sentence and silenceTimer hasn't finished yet, restart rec so we hear the rest of their sentence!
+              if (!finished) {
+                setTimeout(() => {
+                  if (!finished) {
+                    try { rec.start(); } catch (_e) {}
+                  }
+                }, 100);
+              }
+            };
             rec.start();
-          } catch (_e) {
-            setTimeout(() => {
-              if (!finished) startRecognitionInstance();
-            }, 250);
-          }
-        };
-
-        // Wait 280ms after speaker audio ends so previous SpeechRecognition releases the mic cleanly
-        setTimeout(startRecognitionInstance, 280);
+          } catch (_e) {}
+        }, 200);
       });
     }
 
     document.getElementById('btnStartLiveMicCall')?.addEventListener('click', async () => {
-      await ensureMicrophoneAccess();
       const client = getClientById(state.selectedOutboundClientId) || state.clients[0];
       if (!client) return;
       const lead = client.leads[0] || { id: 'LEAD-MIC-1', name: 'ரமேஷ்', phone: '+918610057080', enquiry: 'TATA Nexon' };
@@ -2566,14 +2619,28 @@
 
       updateLogs(`🔊 <strong>AI (Greeting):</strong> "${escapeHtml(greet)}"`);
       const greetRes = await speakUtterance(greet, true, true);
-      if (greetRes?.interrupted && greetRes.customerSpeech) {
-        let gIntent = classifyTamilIntentLocal(greetRes.customerSpeech, client.name);
+      let greetSpeech = greetRes?.interrupted ? (greetRes.customerSpeech || '') : '';
+      if (!greetSpeech) {
+        liveHeardText = 'Listening after Greeting...';
+        renderLiveCallPanel();
+        greetSpeech = await listenForCustomerReplyClean((heard) => {
+          liveHeardText = heard;
+          const sp = document.getElementById('liveMicHeardSpan');
+          if (sp) sp.textContent = `🎙️ Hearing: "${heard}" (Listening completely...)`;
+        }, 3000);
+        liveHeardText = '';
+        renderLiveCallPanel();
+      }
+      let greetTurns = 0;
+      while (greetSpeech && greetTurns < 3) {
+        greetTurns++;
+        let gIntent = classifyTamilIntentLocal(greetSpeech, client.name);
         try {
           const gRes = await fetch(`${API_CONFIG.BASE_URL}/llm/classify`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              replyText: greetRes.customerSpeech,
+              replyText: greetSpeech,
               clientName: client.name,
               questionText: greet,
               positiveKeywords: client.trainer?.positiveKeywords || '',
@@ -2582,12 +2649,12 @@
           });
           if (gRes.ok) gIntent = await gRes.json();
         } catch (_e) {}
-        updateLogs(`🗣️ <strong>Customer Interrupted Greeting:</strong> "${escapeHtml(greetRes.customerSpeech)}" ➡️ <em>${gIntent.intent}</em>`);
+        updateLogs(`🗣️ <strong>Customer Spoke on Greeting:</strong> "${escapeHtml(greetSpeech)}" ➡️ <em>${gIntent.intent}</em>`);
         if (gIntent.action === 'END_CALL_BUSY') {
           updateLogs(`🔊 <strong>AI:</strong> "${escapeHtml(gIntent.spokenReply)}"`);
           await speakUtterance(gIntent.spokenReply, true, false);
           lead.status = 'NOT_ATTENDED';
-          lead.callSummary = `Customer busy during greeting ("${greetRes.customerSpeech}").`;
+          lead.callSummary = `Customer busy during greeting ("${greetSpeech}").`;
           lead.calledAt = formatNow();
           if (badgeEl) badgeEl.textContent = 'NOT_ATTENDED';
           saveState();
@@ -2595,8 +2662,12 @@
           return;
         }
         if (gIntent.spokenReply) {
-          updateLogs(`🔊 <strong>AI (Answering Customer):</strong> "${escapeHtml(gIntent.spokenReply)}"`);
-          await speakUtterance(gIntent.spokenReply, true, true);
+          updateLogs(`🔊 <strong>AI (Groq LLM Reply):</strong> "${escapeHtml(gIntent.spokenReply)}"`);
+          const followRes = await speakUtterance(gIntent.spokenReply, true, true);
+          greetSpeech = followRes?.interrupted ? (followRes.customerSpeech || '') : '';
+          await new Promise((r) => setTimeout(r, 450));
+        } else {
+          greetSpeech = '';
         }
       }
 
@@ -2608,9 +2679,11 @@
         const q = questions[i];
         let questionAnswered = false;
         let attempts = 0;
+        let questionTurns = 0;
 
-        while (!questionAnswered && attempts < 3) {
+        while (!questionAnswered && attempts < 3 && questionTurns < 6) {
           attempts++;
+          questionTurns++;
           updateLogs(`🤖 <strong>AI (Q${i + 1}):</strong> "${escapeHtml(q.text)}"`);
 
           const qRes = await speakUtterance(q.text, true, true);
@@ -2618,13 +2691,13 @@
           if (qRes?.interrupted && qRes.customerSpeech) {
             customerSpeech = qRes.customerSpeech;
           } else {
-            liveHeardText = 'Listening...';
+            liveHeardText = 'Listening on Mic (Speak your full sentence)...';
             renderLiveCallPanel();
             customerSpeech = await listenForCustomerReplyClean((heard) => {
               liveHeardText = heard;
               const sp = document.getElementById('liveMicHeardSpan');
-              if (sp) sp.textContent = `Hearing: "${heard}"`;
-            }, 9000);
+              if (sp) sp.textContent = `🎙️ Hearing: "${heard}" (Listening completely...)`;
+            }, 10000);
             liveHeardText = '';
           }
 
@@ -2633,7 +2706,7 @@
             continue;
           }
 
-          // Classify Customer's Tamil Intent via Backend API (with instant local fallback)
+          // Classify Customer's Tamil Intent via Backend API (Groq Hybrid LLM + local fallback)
           let nlu = classifyTamilIntentLocal(customerSpeech, client.name);
           try {
             const apiRes = await fetch(`${API_CONFIG.BASE_URL}/llm/classify`, {
@@ -2665,13 +2738,21 @@
           }
 
           if (nlu.action === 'REPEAT_CURRENT') {
-            // Customer asked "நீ யாரு?", "எதுக்கு கால் பண்ணீங்க?", or "புரியல திரும்ப சொல்லுங்க"!
-            // Speak the smart Tamil explanation and THEN loop to re-ask the SAME question!
+            // Customer asked a question or made a comment -> Speak Groq LLM's smart Tamil explanation and THEN re-ask current question!
+            if (attempts > 0) attempts--;
             if (nlu.spokenReply) {
-              updateLogs(`🔊 <strong>AI (Replying to Customer):</strong> "${escapeHtml(nlu.spokenReply)}"`);
+              updateLogs(`🔊 <strong>AI (Groq LLM Reply):</strong> "${escapeHtml(nlu.spokenReply)}"`);
               await speakUtterance(nlu.spokenReply, true, true);
+              await new Promise((r) => setTimeout(r, 450));
             }
             continue;
+          }
+
+          // Even when moving to NEXT_QUESTION, if Groq LLM generated a spokenReply to a customer comment, speak it first!
+          if (nlu.spokenReply) {
+            updateLogs(`🔊 <strong>AI (Groq LLM Reply):</strong> "${escapeHtml(nlu.spokenReply)}"`);
+            await speakUtterance(nlu.spokenReply, true, true);
+            await new Promise((r) => setTimeout(r, 350));
           }
 
           // Customer answered YES or NO!

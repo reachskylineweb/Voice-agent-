@@ -7,11 +7,9 @@ import numpy as np
 import onnxruntime as ort
 from scipy.ndimage import uniform_filter1d
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BASE_DIR = r"e:\Ai Voice agent" if os.path.exists(r"e:\Ai Voice agent\models") else REPO_ROOT
+BASE_DIR = r"e:\Ai Voice agent"
 VITS_DIR = os.path.join(BASE_DIR, "models", "vits_rasa_13_onnx")
-CACHE_DIR = os.path.join(REPO_ROOT, "backend", "audio_cache")
-FRONTEND_AUDIO_DIR = os.path.join(REPO_ROOT, "frontend", "audio")
+CACHE_DIR = os.path.join(BASE_DIR, "backend", "audio_cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 TAMIL_PHONETIC_MAP = [
@@ -163,26 +161,24 @@ class TamilVits13Engine:
         self.sr = 24000
         self.onnx_path = os.path.join(VITS_DIR, "model.onnx")
         self.tokens_path = os.path.join(VITS_DIR, "tokens.txt")
-        self.sess = None
+
+        sess_opts = ort.SessionOptions()
+        sess_opts.intra_op_num_threads = max(4, os.cpu_count() or 4)
+        sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+
+        self.sess = ort.InferenceSession(self.onnx_path, sess_options=sess_opts, providers=["CPUExecutionProvider"])
         self.token_map = {}
-
-        if os.path.exists(self.onnx_path) and os.path.exists(self.tokens_path):
-            sess_opts = ort.SessionOptions()
-            sess_opts.intra_op_num_threads = max(4, os.cpu_count() or 4)
-            sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-
-            self.sess = ort.InferenceSession(self.onnx_path, sess_options=sess_opts, providers=["CPUExecutionProvider"])
-            with open(self.tokens_path, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.rstrip("\r\n")
-                    if not line:
-                        continue
-                    if line.startswith("  "):
-                        self.token_map[" "] = int(line.strip())
-                    else:
-                        parts = line.rsplit(" ", 1)
-                        if len(parts) == 2:
-                            self.token_map[parts[0]] = int(parts[1])
+        with open(self.tokens_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.rstrip("\r\n")
+                if not line:
+                    continue
+                if line.startswith("  "):
+                    self.token_map[" "] = int(line.strip())
+                else:
+                    parts = line.rsplit(" ", 1)
+                    if len(parts) == 2:
+                        self.token_map[parts[0]] = int(parts[1])
 
     def normalize_tamil_text(self, text: str) -> str:
         out = text.strip()
@@ -270,11 +266,16 @@ class TamilVits13Engine:
             out = out * (0.82 / pk)
         return out
 
-    def expand_natural_comma_pauses(self, raw_wav: np.ndarray, target_pause_sec: float = 0.38) -> np.ndarray:
+    def expand_natural_comma_pauses(
+        self,
+        raw_wav: np.ndarray,
+        first_pause_sec: float = 0.55,
+        target_pause_sec: float = 0.42,
+    ) -> np.ndarray:
         """
         Finds true comma/sentence silence valleys (>= 130ms at env < 0.010, never triggered by 50-80ms Tamil
         geminate stop consonants) inside the raw single-pass VITS waveform, levels each clause independently
-        with level_syllabic_rms, and inserts a calm 0.48s opening greeting pause and 0.38s clause pause.
+        with level_syllabic_rms, and inserts a calm opening greeting pause and clause pause.
         """
         win = int(0.030 * self.sr)
         sq = raw_wav.astype(np.float64) ** 2
@@ -307,8 +308,8 @@ class TamilVits13Engine:
                 if prev_idx > 0:
                     clause[:fade_len] *= np.linspace(0.0, 1.0, fade_len, dtype=np.float32)
             pieces.append(clause)
-            # Calm 0.48s pause ("நிறுத்தி நிதானமா") right after the opening greeting clause ("வணக்கம் ரமேஷ் சார்,")
-            pause_dur = 0.48 if idx == 0 else target_pause_sec
+            # Calm human pause ("நிறுத்தி நிதானமா") right after the opening greeting clause ("வணக்கம் ரமேஷ் சார்,")
+            pause_dur = first_pause_sec if idx == 0 else target_pause_sec
             pieces.append(np.zeros(int(pause_dur * self.sr), dtype=np.float32))
             prev_idx = e
 
@@ -359,9 +360,13 @@ class TamilVits13Engine:
     def synthesize(self, text: str, emotion_id: int = 4, length_scale: float = 1.08) -> str:
         t0 = time.perf_counter()
         norm = self.normalize_tamil_text(text)
+        is_opening_greeting = norm.startswith("வணக்கம்")
+        eff_ls = 1.35 if is_opening_greeting else self.LOCKED_LENGTH_SCALE
+        first_pause = 0.68 if is_opening_greeting else 0.55
+        next_pause = 0.55 if is_opening_greeting else 0.42
         key_str = (
-            f"vits13_locked_v14_sid{self.LOCKED_SID}_emo{self.LOCKED_EMOTION_ID}_"
-            f"ns{self.LOCKED_NOISE_SCALE}_ls{self.LOCKED_LENGTH_SCALE}_{norm}"
+            f"vits13_locked_v15_sid{self.LOCKED_SID}_emo{self.LOCKED_EMOTION_ID}_"
+            f"ns{self.LOCKED_NOISE_SCALE}_ls{eff_ls}_fp{first_pause}_{norm}"
         )
         file_hash = hashlib.md5(key_str.encode("utf-8")).hexdigest()[:16]
         out_wav_path = os.path.join(CACHE_DIR, f"tts_{file_hash}.wav")
@@ -374,45 +379,12 @@ class TamilVits13Engine:
                 f"[TTS-DEBUG] source=CACHE_HIT | file={os.path.basename(out_wav_path)} | "
                 f"model={self.MODEL_NAME} | sid={self.LOCKED_SID} | emotion_id={self.LOCKED_EMOTION_ID} | "
                 f"noise_scale={self.LOCKED_NOISE_SCALE} | noise_scale_w={self.LOCKED_NOISE_SCALE_W} | "
-                f"length_scale={self.LOCKED_LENGTH_SCALE} | sr={self.sr}Hz | "
+                f"length_scale={eff_ls} | sr={self.sr}Hz | "
                 f"dur={diag['dur_s']}s | F0={diag['f0_med']}Hz [{diag['f0_p10']}..{diag['f0_p90']}Hz, std={diag['f0_std']}] | "
                 f"Cent={diag['cent_med']}Hz | RMS={diag['rms_med']} | text=\"{norm}\"",
                 flush=True,
             )
             return out_wav_path
-
-        if self.sess is None:
-            t = text.strip()
-            fallback_name = "test_voice_sample.wav"
-            if "கஸ்டமர் சப்போர்ட்ல இருந்து பேசுறேன்" in t:
-                fallback_name = "nlu_who_heal.wav" if "ஹீலிங்" in t else "nlu_who_tata.wav"
-            elif "கருத்தை கேட்டு நோட் பண்ண" in t:
-                fallback_name = "nlu_why_heal.wav" if "ஹீலிங்" in t else "nlu_why_tata.wav"
-            elif "திரும்பத் தெளிவா சொல்றேன்" in t or "திரும்ப தெளிவா சொல்றேன்" in t:
-                fallback_name = "nlu_repeat.wav"
-            elif "டிஸ்டர்ப் பண்ணதுக்கு மன்னிக்கவும்" in t or "அப்புறமா உங்களுக்கு கால் பண்றேன்" in t:
-                fallback_name = "nlu_busy.wav"
-            elif "வெரிபிகேஷன் டீம்ல இருந்து பேசுறேன்" in t:
-                fallback_name = "nlu_clarify_tata.wav"
-            elif "பொன்னான நேரத்துக்கு" in t or "நல்ல நாளா அமையட்டும்" in t:
-                fallback_name = "closing_yes.wav"
-            elif "இன்னைக்கே உங்களுக்கு கால் பண்ண சொல்றேன்" in t or "உங்களை கூப்பிட சொல்றேன்" in t:
-                fallback_name = "closing_no.wav"
-            elif "வணக்கம்" in t and ("டாட்டா" in t or "TATA" in t):
-                fallback_name = "tata_greet_suresh.wav" if "சுரேஷ்" in t else "tata_greet_ramesh.wav"
-            elif "வணக்கம்" in t and ("ஹீலிங்" in t or "Healing" in t):
-                fallback_name = "heal_greet_karthik.wav"
-            elif "நெக்சான்" in t or "டீலர் உங்ககிட்ட பேசுனாங்களா" in t:
-                fallback_name = "tata_q1.wav"
-            elif "வண்டி விவரம்" in t or "திருப்தியா இருந்ததா" in t:
-                fallback_name = "tata_q2.wav"
-            elif "சர்வீஸ் பத்தி விசாரிச்சிருந்தீங்க" in t or "டீம் உங்ககிட்ட பேசுனாங்களா" in t:
-                fallback_name = "heal_q1.wav"
-            elif "கன்சல்டேஷன் அப்பாயின்ட்மென்ட்" in t or "புக் பண்ணிக்கலாமா" in t:
-                fallback_name = "heal_q2.wav"
-            fb_path = os.path.join(FRONTEND_AUDIO_DIR, fallback_name)
-            if os.path.exists(fb_path):
-                return fb_path
 
         x = self.text_to_ids(norm)
         if x.shape[1] <= 2:
@@ -429,7 +401,7 @@ class TamilVits13Engine:
             "x": x,
             "x_length": x_length,
             "noise_scale": np.array(self.LOCKED_NOISE_SCALE, dtype=np.float32),
-            "length_scale": np.array(self.LOCKED_LENGTH_SCALE, dtype=np.float32),
+            "length_scale": np.array(eff_ls, dtype=np.float32),
             "noise_scale_w": np.array(self.LOCKED_NOISE_SCALE_W, dtype=np.float32),
             "sid": np.array([self.LOCKED_SID], dtype=np.int64),
             "emotion_id": np.array([self.LOCKED_EMOTION_ID], dtype=np.int64),
@@ -442,7 +414,7 @@ class TamilVits13Engine:
             e_idx = min(len(raw_wav), active[-1] + int(0.025 * self.sr))
             raw_wav = raw_wav[s_idx:e_idx]
 
-        wav = self.expand_natural_comma_pauses(raw_wav, target_pause_sec=0.38)
+        wav = self.expand_natural_comma_pauses(raw_wav, first_pause_sec=first_pause, target_pause_sec=next_pause)
 
         fi = min(len(wav), int(0.012 * self.sr))
         fo = min(len(wav), int(0.020 * self.sr))
